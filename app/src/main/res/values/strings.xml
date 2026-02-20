@@ -1,0 +1,114 @@
+<resources>
+    <string name="app_name">NomNom - AI Calorie Counter App</string>
+    <string name="app_tagline">AI Calorie Counter App</string>
+
+    <!-- Home -->
+    <string name="home_title">NomNom</string>
+    <string name="home_scan_food">Scan food</string>
+    <string name="home_describe_meal">Describe your meal</string>
+    <string name="home_upload_label">Upload product label</string>
+    <string name="home_ask_meals">Ask about meals</string>
+    <string name="home_my_diet_plan">My diet plan</string>
+
+    <!-- Scan / Describe -->
+    <string name="scan_take_photo">Take photo</string>
+    <string name="scan_upload_image">Upload image</string>
+    <string name="describe_hint">e.g. Grilled chicken salad with olive oil</string>
+    <string name="describe_analyze">Get calorie breakdown</string>
+    <string name="label_upload_hint">Upload a photo of the product label to calculate nutrition</string>
+
+    <!-- Q&A -->
+    <string name="qa_title">Meal assistant</string>
+    <string name="qa_hint">Ask about calories, macros, or nutrition…</string>
+    <string name="qa_send">Send</string>
+    <string name="qa_predefined_how_many_calories">How many calories in…?</string>
+    <string name="qa_predefined_macros">What are the macros of…?</string>
+    <string name="qa_predefined_healthy">Is … healthy?</string>
+    <string name="qa_predefined_substitute">What can I substitute for…?</string>
+
+    <!-- Diet plan -->
+    <string name="diet_title">Personalized diet plan</string>
+    <string name="diet_intro">Answer a few questions to get a plan tailored to you.</string>
+    <string name="diet_next">Next</string>
+    <string name="diet_done">Get my plan</string>
+    <string name="diet_goal">What is your main goal?</string>
+    <string name="diet_goal_lose">Lose weight</string>
+    <string name="diet_goal_maintain">Maintain weight</string>
+    <string name="diet_goal_gain">Gain muscle</string>
+    <string name="diet_activity">How active are you?</string>
+    <string name="diet_activity_low">Sedentary</string>
+    <string name="diet_activity_medium">Moderately active</string>
+    <string name="diet_activity_high">Very active</string>
+    <string name="diet_restrictions">Any dietary restrictions?</string>
+    <string name="diet_restrictions_none">None</string>
+    <string name="diet_restrictions_vegetarian">Vegetarian</string>
+    <string name="diet_restrictions_vegan">Vegan</string>
+    <string name="diet_restrictions_gluten_free">Gluten-free</string>
+    <string name="diet_plan_ready">Your plan is ready</string>
+    <string name="diet_plan_summary">Based on your answers, here’s a summary of your diet plan.</string>
+    <string name="diet_start_over">Start over</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="clear">Clear</string>
+    <string name="retry">Retry</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="error">Error</string>
+    <string name="loading">Loading…</string>
+
+    <!-- Errors -->
+    <string name="error_network">No internet connection. Check your network and try again.</string>
+    <string name="error_api_limit">Daily API limit reached. Try again tomorrow or use a local option.</string>
+    <string name="error_server">Something went wrong on our side. Please try again.</string>
+    <string name="error_invalid_input">Please check your input and try again.</string>
+    <string name="error_unknown">Something went wrong. Please try again.</string>
+    <string name="error_image_load">Could not load image. Try another photo.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get started</string>
+    <string name="onboarding_page1_title">Track food with AI</string>
+    <string name="onboarding_page1_desc">Snap a photo or describe your meal. NomNom gives you a detailed calorie and nutrition breakdown.</string>
+    <string name="onboarding_page2_title">Stay on track</string>
+    <string name="onboarding_page2_desc">Set goals, log weight, and see your progress over time. Compare before and after photos.</string>
+    <string name="onboarding_page3_title">Grow with friends</string>
+    <string name="onboarding_page3_desc">Join groups, share meals, and get support from others on the same journey.</string>
+    <string name="onboarding_page4_title">You\'re all set</string>
+    <string name="onboarding_page4_desc">Tap Get started to begin tracking and reach your goals.</string>
+
+    <!-- Home empty state -->
+    <string name="home_empty_recent">Recently uploaded</string>
+    <string name="home_empty_cta">Tap + to log your first meal</string>
+
+    <!-- Profile setup (post-onboarding) -->
+    <string name="profile_setup_title">Set up your profile</string>
+    <string name="profile_setup_subtitle">A few details help us personalize your experience.</string>
+    <string name="profile_name">Your name</string>
+    <string name="profile_name_hint">Enter your name</string>
+    <string name="profile_weight">Weight (kg)</string>
+    <string name="profile_weight_hint">e.g. 70</string>
+    <string name="profile_height">Height (cm)</string>
+    <string name="profile_height_hint">e.g. 170</string>
+    <string name="profile_age">Age</string>
+    <string name="profile_age_hint">e.g. 28</string>
+    <string name="profile_finish">Finish</string>
+    <string name="profile_title">Profile</string>
+    <string name="profile_photo_desc">Profile photo</string>
+    <string name="profile_photo_edit">Change profile photo</string>
+    <string name="profile_photo_selfie">Take selfie</string>
+    <string name="profile_photo_gallery">Choose from gallery</string>
+
+    <!-- Progress -->
+    <string name="progress_your_weight">Your Weight</string>
+    <string name="progress_goal">Goal: %s</string>
+    <string name="progress_log_weight">Log Weight</string>
+    <string name="progress_day_streak">Day Streak</string>
+    <string name="progress_streak_subtitle">Days you logged a meal</string>
+    <string name="progress_weight_progress">Weight Progress</string>
+    <string name="progress_log_to_see">Log weight to see your progress</string>
+    <string name="progress_keep_going">Keep going! Consistency is key.</string>
+    <string name="progress_log_weight_dialog">Log weight (kg)</string>
+    <string name="progress_log_weight_hint">e.g. 70.5</string>
+</resources>
