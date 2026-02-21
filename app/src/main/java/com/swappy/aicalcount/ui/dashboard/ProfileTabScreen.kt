@@ -45,6 +45,9 @@ fun ProfileTabScreen(
     onNavigateToDescribe: () -> Unit,
     onNavigateToLabelUpload: () -> Unit,
     onNavigateToMealQa: () -> Unit,
+    onNavigateToRecipeCalculator: () -> Unit = {},
+    onNavigateToCoach: () -> Unit = {},
+    apiRemainingCalls: Int? = null,
     modifier: Modifier = Modifier
 ) {
     val scroll = rememberScrollState()
@@ -113,10 +116,22 @@ fun ProfileTabScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
+            if (apiRemainingCalls != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.api_remaining, apiRemainingCalls),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Spacer(modifier = Modifier.height(24.dp))
 
         ProfileMenuItem(stringResource(R.string.home_my_diet_plan), onNavigateToDietPlan)
+        Spacer(modifier = Modifier.height(8.dp))
+        ProfileMenuItem(stringResource(R.string.recipe_calc_menu), onNavigateToRecipeCalculator)
+        Spacer(modifier = Modifier.height(8.dp))
+        ProfileMenuItem(stringResource(R.string.coach_menu), onNavigateToCoach)
         Spacer(modifier = Modifier.height(8.dp))
         ProfileMenuItem("Compare progress photos", onNavigateToCompare)
         Spacer(modifier = Modifier.height(8.dp))
@@ -163,6 +178,8 @@ fun ProfileTabScreenPreview() {
             onNavigateToDescribe = {},
             onNavigateToLabelUpload = {},
             onNavigateToMealQa = {},
+            onNavigateToRecipeCalculator = {},
+            onNavigateToCoach = {},
         )
     }
 }

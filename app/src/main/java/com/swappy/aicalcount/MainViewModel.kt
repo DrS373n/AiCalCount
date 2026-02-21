@@ -6,6 +6,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.swappy.aicalcount.data.onboarding.OnboardingRepository
 import com.swappy.aicalcount.data.progress.ProgressRepository
+import com.swappy.aicalcount.network.AnalyzedRecipe
+import com.swappy.aicalcount.network.Nutrition
+import com.swappy.aicalcount.network.ProductByUpcResponse
 import com.swappy.aicalcount.network.Recipe
 import com.swappy.aicalcount.network.RetrofitClient
 import com.swappy.aicalcount.network.toRecipe
@@ -41,6 +44,14 @@ class MainViewModel(
 
     private val _loading = MutableStateFlow(false)
     val loading = _loading.asStateFlow()
+
+    /** One-shot key for Snackbar: "added_to_day" when macros were added to today. */
+    private val _snackbarMessageKey = MutableStateFlow<String?>(null)
+    val snackbarMessageKey = _snackbarMessageKey.asStateFlow()
+
+    fun clearSnackbarMessage() {
+        _snackbarMessageKey.value = null
+    }
 
     fun analyzeImage(bitmap: Bitmap, apiKey: String) {
         if (!apiUsageManager.canMakeApiCall()) {
@@ -131,6 +142,65 @@ class MainViewModel(
         bitmap?.let { analyzeImage(it, apiKey) }
     }
 
+    fun lookupBarcode(upc: String, apiKey: String) {
+        val trimmed = upc.trim()
+        if (trimmed.isBlank()) {
+            _appError.value = AppError.InvalidInput(detail = "Enter a barcode (UPC).")
+            return
+        }
+        if (!apiUsageManager.canMakeApiCall()) {
+            _showApiLimitNotification.value = true
+            return
+        }
+        viewModelScope.launch {
+            _loading.value = true
+            _appError.value = null
+            try {
+                val product = RetrofitClient.spoonacularService.getProductByUpc(trimmed, apiKey)
+                if (product == null || product.title == null) {
+                    _appError.value = AppError.InvalidInput(detail = "Product not in database. Try photo or describe.")
+                    _recipe.value = null
+                } else {
+                    val nutrition = product.nutrition ?: Nutrition(emptyList())
+                    val recipe = Recipe(
+                        recipes = listOf(
+                            AnalyzedRecipe(
+                                id = product.id ?: 0,
+                                title = product.title,
+                                image = "",
+                                imageUrls = emptyList(),
+                                nutrition = nutrition
+                            )
+                        )
+                    )
+                    _recipe.value = recipe
+                    apiUsageManager.recordApiCall()
+                    onboardingRepository.setHasLoggedMeal()
+                    progressRepository.recordMealLogged()
+                    extractAndAddMacros(recipe)
+                }
+            } catch (e: IOException) {
+                _appError.value = AppError.Network(detail = e.message)
+                _recipe.value = null
+            } catch (e: retrofit2.HttpException) {
+                if (e.code() == 404) {
+                    _appError.value = AppError.InvalidInput(detail = "Product not in database. Try photo or describe.")
+                } else {
+                    _appError.value = when (e.code()) {
+                        429 -> AppError.ApiLimit()
+                        else -> AppError.Server(detail = e.message())
+                    }
+                }
+                _recipe.value = null
+            } catch (e: Exception) {
+                _appError.value = AppError.Unknown(detail = e.message)
+                _recipe.value = null
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+
     fun dismissApiLimitNotification() {
         _showApiLimitNotification.value = false
     }
@@ -147,7 +217,24 @@ class MainViewModel(
         val protein = findAmount(listOf("Protein"))
         val carbs = findAmount(listOf("Carbohydrates", "Carbs"))
         val fat = findAmount(listOf("Fat"))
-        if (protein > 0f || carbs > 0f || fat > 0f)
+        if (protein > 0f || carbs > 0f || fat > 0f) {
             progressRepository.addMealMacros(protein, carbs, fat)
+            _snackbarMessageKey.value = "added_to_day"
+        }
+    }
+
+    /** Add one serving of a recipe to today's macros (recipe nutrition / servings). */
+    suspend fun addRecipeServingToToday(recipe: Recipe?, servings: Int) {
+        if (recipe == null || servings < 1) return
+        val nutrients = recipe.recipes.firstOrNull()?.nutrition?.nutrients ?: return
+        fun findAmount(nameVariants: List<String>): Float =
+            nutrients.firstOrNull { n -> nameVariants.any { n.name.equals(it, ignoreCase = true) } }?.amount?.toFloat() ?: 0f
+        val protein = findAmount(listOf("Protein")) / servings
+        val carbs = findAmount(listOf("Carbohydrates", "Carbs")) / servings
+        val fat = findAmount(listOf("Fat")) / servings
+        if (protein > 0f || carbs > 0f || fat > 0f) {
+            progressRepository.addMealMacros(protein, carbs, fat)
+            _snackbarMessageKey.value = "added_to_day"
+        }
     }
 }

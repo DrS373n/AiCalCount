@@ -25,6 +25,9 @@ private val KEY_TODAY_MACROS_DATE = stringPreferencesKey("today_macros_date")
 private val KEY_TODAY_PROTEIN = floatPreferencesKey("today_protein")
 private val KEY_TODAY_CARBS = floatPreferencesKey("today_carbs")
 private val KEY_TODAY_FAT = floatPreferencesKey("today_fat")
+private val KEY_HYDRATION_DATE = stringPreferencesKey("hydration_date")
+private val KEY_HYDRATION_GLASSES = intPreferencesKey("hydration_glasses")
+private val KEY_HYDRATION_GOAL_GLASSES = intPreferencesKey("hydration_goal_glasses")
 
 private fun parseWeightHistory(str: String?): List<Pair<String, Float>> {
     if (str.isNullOrBlank()) return emptyList()
@@ -67,6 +70,14 @@ class ProgressRepository(private val context: Context) {
         if (prefs[KEY_TODAY_MACROS_DATE] == LocalDate.now().toString()) prefs[KEY_TODAY_FAT] ?: 0f else 0f
     }
 
+    /** Today's hydration: glasses of water. Reset each day. Default goal 8. */
+    val hydrationGlasses: Flow<Int> = context.progressDataStore.data.map { prefs ->
+        if (prefs[KEY_HYDRATION_DATE] == LocalDate.now().toString()) prefs[KEY_HYDRATION_GLASSES] ?: 0 else 0
+    }
+    val hydrationGoalGlasses: Flow<Int> = context.progressDataStore.data.map { prefs ->
+        prefs[KEY_HYDRATION_GOAL_GLASSES] ?: 8
+    }
+
     /** Add a meal's macros to today's totals. Resets to this meal if it's a new day. */
     suspend fun addMealMacros(proteinG: Float, carbsG: Float, fatG: Float) {
         val todayStr = LocalDate.now().toString()
@@ -93,6 +104,25 @@ class ProgressRepository(private val context: Context) {
             current.add(dateStr to weightKg)
             current.sortBy { it.first }
             prefs[KEY_WEIGHT_HISTORY] = current.joinToString(";") { "${it.first},${it.second}" }
+        }
+    }
+
+    /** Add one glass of water for today. Resets count if it's a new day. */
+    suspend fun addHydrationGlass() {
+        val todayStr = LocalDate.now().toString()
+        context.progressDataStore.edit { prefs ->
+            if (prefs[KEY_HYDRATION_DATE] == todayStr) {
+                prefs[KEY_HYDRATION_GLASSES] = (prefs[KEY_HYDRATION_GLASSES] ?: 0) + 1
+            } else {
+                prefs[KEY_HYDRATION_DATE] = todayStr
+                prefs[KEY_HYDRATION_GLASSES] = 1
+            }
+        }
+    }
+
+    suspend fun setHydrationGoal(glasses: Int) {
+        context.progressDataStore.edit { prefs ->
+            prefs[KEY_HYDRATION_GOAL_GLASSES] = glasses.coerceIn(1, 20)
         }
     }
 

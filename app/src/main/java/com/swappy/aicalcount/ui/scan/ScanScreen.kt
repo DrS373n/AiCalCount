@@ -54,6 +54,14 @@ fun ScanScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+                if (loading) {
+                    Text(
+                        text = stringResource(R.string.scan_analyzing),
+                        style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 if (recipe != null) {
                     RecipeDetails(recipe = recipe)
                     Spacer(modifier = Modifier.height(16.dp))

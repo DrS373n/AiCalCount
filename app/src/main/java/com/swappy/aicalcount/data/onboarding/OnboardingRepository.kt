@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.onboardingDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -16,6 +17,7 @@ private val Context.onboardingDataStore: DataStore<Preferences> by preferencesDa
 private val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
 private val KEY_HAS_LOGGED_MEAL = booleanPreferencesKey("has_logged_meal")
 private val KEY_PROFILE_SETUP_COMPLETE = booleanPreferencesKey("profile_setup_complete")
+private val KEY_HAS_SEEN_FAB_TOOLTIP = booleanPreferencesKey("has_seen_fab_tooltip")
 
 class OnboardingRepository(private val context: Context) {
 
@@ -55,6 +57,15 @@ class OnboardingRepository(private val context: Context) {
     suspend fun setProfileSetupComplete() {
         context.onboardingDataStore.edit { prefs ->
             prefs[KEY_PROFILE_SETUP_COMPLETE] = true
+        }
+    }
+
+    suspend fun getHasSeenFabTooltip(): Boolean =
+        context.onboardingDataStore.data.first()[KEY_HAS_SEEN_FAB_TOOLTIP] ?: false
+
+    suspend fun setHasSeenFabTooltip() {
+        context.onboardingDataStore.edit { prefs ->
+            prefs[KEY_HAS_SEEN_FAB_TOOLTIP] = true
         }
     }
 }

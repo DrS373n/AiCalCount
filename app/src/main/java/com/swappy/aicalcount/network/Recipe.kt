@@ -37,3 +37,11 @@ data class SearchRecipeResult(
     val imageType: String? = null,
     val nutrition: Nutrition? = null
 )
+
+/** Response from Spoonacular GET food/products/upc/{upc} */
+data class ProductByUpcResponse(
+    val id: Int? = null,
+    val title: String? = null,
+    val upc: String? = null,
+    val nutrition: Nutrition? = null
+)

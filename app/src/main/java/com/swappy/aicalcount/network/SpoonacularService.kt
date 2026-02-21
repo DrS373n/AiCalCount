@@ -4,9 +4,17 @@ import okhttp3.RequestBody
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface SpoonacularService {
+
+    /** Get grocery product by UPC barcode. Returns product with nutrition when available. */
+    @GET("food/products/upc/{upc}")
+    suspend fun getProductByUpc(
+        @Path("upc") upc: String,
+        @Query("apiKey") apiKey: String
+    ): ProductByUpcResponse?
 
     @POST("food/images/analyze")
     suspend fun analyzeImage(

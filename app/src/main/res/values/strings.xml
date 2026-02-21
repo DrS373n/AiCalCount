@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">NomNom - AI Calorie Counter App</string>
+    <string name="app_name">NomNom</string>
     <string name="app_tagline">AI Calorie Counter App</string>
 
     <!-- Home -->
@@ -9,12 +9,20 @@
     <string name="home_upload_label">Upload product label</string>
     <string name="home_ask_meals">Ask about meals</string>
     <string name="home_my_diet_plan">My diet plan</string>
+    <string name="recipe_calc_menu">Recipe nutrition calculator</string>
+    <string name="coach_menu">AI Coach</string>
 
     <!-- Scan / Describe -->
     <string name="scan_take_photo">Take photo</string>
     <string name="scan_upload_image">Upload image</string>
     <string name="describe_hint">e.g. Grilled chicken salad with olive oil</string>
     <string name="describe_analyze">Get calorie breakdown</string>
+    <string name="describe_placeholder_example">e.g. grilled chicken 200g, rice 1 cup</string>
+    <string name="voice_input_desc">Speak your meal (voice input)</string>
+    <string name="voice_prompt">Describe your meal for calorie tracking</string>
+    <string name="home_voice_meal">Describe with voice</string>
+    <string name="snackbar_added_to_day">Added to today\'s totals</string>
+    <string name="scan_analyzing">Analyzing…</string>
     <string name="label_upload_hint">Upload a photo of the product label to calculate nutrition</string>
 
     <!-- Q&A -->
@@ -81,6 +89,10 @@
     <!-- Home empty state -->
     <string name="home_empty_recent">Recently uploaded</string>
     <string name="home_empty_cta">Tap + to log your first meal</string>
+    <string name="home_empty_message">Snap or describe your first meal</string>
+    <string name="first_run_fab_tooltip">Tap + to log a meal (photo or describe)</string>
+    <string name="progress_empty_weight">Log your first weight</string>
+    <string name="progress_empty_weight_subtitle">Track your progress over time</string>
 
     <!-- Profile setup (post-onboarding) -->
     <string name="profile_setup_title">Set up your profile</string>
@@ -111,4 +123,41 @@
     <string name="progress_keep_going">Keep going! Consistency is key.</string>
     <string name="progress_log_weight_dialog">Log weight (kg)</string>
     <string name="progress_log_weight_hint">e.g. 70.5</string>
+    <string name="progress_import_health_connect">Import from Health Connect</string>
+    <string name="progress_imported_weight">Weight imported from Health Connect</string>
+    <string name="progress_import_failed">Could not import. Grant weight permission in Health Connect.</string>
+
+    <!-- API usage -->
+    <string name="api_remaining">~%d scans left today</string>
+    <string name="api_near_limit_title">Few scans left</string>
+    <string name="api_near_limit_message">You have %d scans left today. Use them wisely.</string>
+
+    <!-- Barcode -->
+    <string name="barcode_title">Scan barcode</string>
+    <string name="barcode_hint">Enter UPC or scan product barcode</string>
+    <string name="barcode_lookup">Look up product</string>
+    <string name="barcode_enter_manually">Enter barcode manually</string>
+
+    <!-- Hydration -->
+    <string name="hydration_title">Water</string>
+    <string name="hydration_glasses">%d / %d glasses</string>
+    <string name="hydration_add">+1</string>
+
+    <!-- Recipe calculator -->
+    <string name="recipe_calc_title">Recipe nutrition</string>
+    <string name="recipe_calc_name_hint">Recipe name</string>
+    <string name="recipe_calc_ingredients_hint">Ingredients (e.g. 200g chicken, 1 cup rice)</string>
+    <string name="recipe_calc_servings_hint">Servings (optional)</string>
+    <string name="recipe_calc_calculate">Calculate nutrition</string>
+    <string name="recipe_calc_per_serving">Per serving</string>
+    <string name="recipe_calc_add_serving">Add one serving to today</string>
+    <string name="recipe_details_show_more">Show more nutrients</string>
+    <string name="recipe_details_show_less">Show less</string>
+
+    <!-- AI Coach -->
+    <string name="coach_title">AI Coach</string>
+    <string name="coach_today_tip">Today\'s tip</string>
+    <string name="coach_weekly_summary">How did I do this week?</string>
+    <string name="coach_get_tip">Get tip</string>
+    <string name="coach_get_summary">Get summary</string>
 </resources>

@@ -10,10 +10,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+data class QaTurn(val question: String, val answer: String?)
+
 class GenerativeMealQaViewModel : ViewModel() {
 
     private val _answer = MutableStateFlow<String?>(null)
     val answer = _answer.asStateFlow()
+
+    private val _conversationHistory = MutableStateFlow<List<QaTurn>>(emptyList())
+    val conversationHistory = _conversationHistory.asStateFlow()
 
     private val _loading = MutableStateFlow(false)
     val loading = _loading.asStateFlow()
@@ -42,7 +47,9 @@ class GenerativeMealQaViewModel : ViewModel() {
             _answer.value = null
             try {
                 val response = chat.sendMessage(question)
-                _answer.value = response.text
+                val answerText = response.text
+                _answer.value = answerText
+                _conversationHistory.value = _conversationHistory.value + QaTurn(question, answerText)
             } catch (e: Exception) {
                 _appError.value = AppError.Unknown(detail = e.message)
             } finally {

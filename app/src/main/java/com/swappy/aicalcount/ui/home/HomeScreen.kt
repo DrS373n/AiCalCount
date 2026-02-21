@@ -37,12 +37,6 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = stringResource(R.string.home_title),
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(vertical = 16.dp),
-        )
         HomeActionCard(
             title = stringResource(R.string.home_scan_food),
             onClick = { onNavigate(NavRoutes.Scan) },

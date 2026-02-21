@@ -5,12 +5,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,6 +34,7 @@ import com.swappy.aicalcount.R
 fun MealQaScreen(
     loading: Boolean,
     answer: String?,
+    conversationHistory: List<QaTurn> = emptyList(),
     onSendQuestion: (String) -> Unit,
     onPredefinedClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -43,12 +50,11 @@ fun MealQaScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(24.dp),
     ) {
         Text(
             text = stringResource(R.string.qa_title),
-            style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 8.dp),
         )
         LazyRow(
@@ -61,6 +67,56 @@ fun MealQaScreen(
                     onClick = { onPredefinedClick(label) },
                     label = { Text(label, maxLines = 1) },
                 )
+            }
+        }
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(conversationHistory) { turn ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                        shape = RoundedCornerShape(12.dp, 12.dp, 12.dp, 4.dp),
+                        modifier = Modifier.fillMaxWidth(0.85f).align(Alignment.End),
+                    ) {
+                        Text(
+                            text = turn.question,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
+                    turn.answer?.let { ans ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            shape = RoundedCornerShape(12.dp, 12.dp, 4.dp, 12.dp),
+                            modifier = Modifier.fillMaxWidth(0.85f).align(Alignment.Start),
+                        ) {
+                            Text(
+                                text = ans,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                    }
+                }
+            }
+            if (loading) {
+                item {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+                }
+            }
+            if (conversationHistory.isEmpty() && !loading && answer == null) {
+                item {
+                    Text(
+                        text = stringResource(R.string.qa_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                }
             }
         }
         OutlinedTextField(
@@ -82,18 +138,6 @@ fun MealQaScreen(
             enabled = !loading && question.isNotBlank(),
         ) {
             Text(stringResource(R.string.qa_send))
-        }
-        if (loading) {
-            LinearProgressIndicator(modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp))
-        }
-        answer?.let {
-            Text(
-                text = it,
-                style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 16.dp),
-            )
         }
     }
 }

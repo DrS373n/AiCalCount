@@ -19,3 +19,7 @@ val StreakYellow = Color(0xFFFFB300)
 val ProgressGreen = Color(0xFF2E7D32)
 val TextDark = Color(0xFF1C1B1F)
 val TextSecondary = Color(0xFF6B6B6B)
+
+// Brand accent for primary actions (FAB, key CTAs)
+val BrandAmber = Color(0xFFE65100)
+val BrandAmberContainer = Color(0xFFFFECB3)

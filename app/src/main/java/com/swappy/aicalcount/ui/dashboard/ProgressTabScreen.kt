@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -53,6 +54,8 @@ fun ProgressTabScreen(
     weekDaysLogged: List<Boolean>,
     onLogWeight: () -> Unit,
     onNavigateToCompare: () -> Unit,
+    onImportFromHealthConnect: () -> Unit = {},
+    healthConnectAvailable: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val scroll = rememberScrollState()
@@ -145,6 +148,12 @@ fun ProgressTabScreen(
                         Spacer(modifier = Modifier.size(8.dp))
                         Text("→")
                     }
+                    if (healthConnectAvailable) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = onImportFromHealthConnect) {
+                            Text(stringResource(R.string.progress_import_health_connect))
+                        }
+                    }
                 }
             }
             Card(
@@ -208,6 +217,36 @@ fun ProgressTabScreen(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
+
+        if (weightHistory.isEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        stringResource(R.string.progress_empty_weight),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.progress_empty_weight_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onLogWeight) {
+                        Text(stringResource(R.string.progress_log_weight))
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
