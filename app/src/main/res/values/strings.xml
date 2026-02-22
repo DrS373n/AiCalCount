@@ -24,6 +24,9 @@
     <string name="home_voice_meal">Describe with voice</string>
     <string name="snackbar_added_to_day">Added to today\'s totals</string>
     <string name="scan_analyzing">Analyzing…</string>
+    <string name="indian_searching">Searching Indian foods…</string>
+    <string name="indian_fallback_hint">No Indian match; trying general database</string>
+    <string name="indian_source_badge">Indian</string>
     <string name="scan_correct_identification">Wrong identification? Correct it</string>
     <string name="scan_correct_dialog_title">Correct identification</string>
     <string name="scan_correct_dialog_hint">What is this food or drink?</string>

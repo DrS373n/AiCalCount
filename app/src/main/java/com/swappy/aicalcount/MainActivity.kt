@@ -767,12 +767,14 @@ fun AppNavHostStateless(
                         requestCameraPermission.launch(Manifest.permission.CAMERA)
                     }
                 }
+                val lastRecipeFromIndian by mainViewModel.lastRecipeFromIndian.collectAsState(initial = false)
                 ScanScreen(
                     bitmap = bitmap,
                     recipe = recipe,
                     loading = loading,
                     isLabelMode = false,
                     appError = appError,
+                    lastRecipeFromIndian = lastRecipeFromIndian,
                     onTakePhoto = onTakePhoto,
                     onPickImage = { pickImage.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onRetry = { mainViewModel.retryAnalyze(SPOONACULAR_API_KEY) },
@@ -788,9 +790,11 @@ fun AppNavHostStateless(
                 val requestVoicePermission = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission(),
                 ) { }
+                val lastRecipeFromIndian by mainViewModel.lastRecipeFromIndian.collectAsState(initial = false)
                 DescribeScreen(
                     loading = loading,
                     recipe = recipe,
+                    lastRecipeFromIndian = lastRecipeFromIndian,
                     onDescribeSubmit = { mainViewModel.analyzeFromText(it, SPOONACULAR_API_KEY) },
                     hasVoicePermission = hasVoicePermission,
                     onRequestVoicePermission = { requestVoicePermission.launch(Manifest.permission.RECORD_AUDIO) },
@@ -829,12 +833,14 @@ fun AppNavHostStateless(
                         requestCameraPermission.launch(Manifest.permission.CAMERA)
                     }
                 }
+                val lastRecipeFromIndian by mainViewModel.lastRecipeFromIndian.collectAsState(initial = false)
                 ScanScreen(
                     bitmap = bitmap,
                     recipe = recipe,
                     loading = loading,
                     isLabelMode = true,
                     appError = appError,
+                    lastRecipeFromIndian = lastRecipeFromIndian,
                     onTakePhoto = onTakePhoto,
                     onPickImage = { pickImage.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onRetry = { mainViewModel.retryAnalyze(SPOONACULAR_API_KEY) },

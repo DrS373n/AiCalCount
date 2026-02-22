@@ -43,6 +43,7 @@ fun ScanScreen(
     loading: Boolean,
     isLabelMode: Boolean,
     appError: AppError?,
+    lastRecipeFromIndian: Boolean = false,
     onTakePhoto: () -> Unit,
     onPickImage: () -> Unit,
     onRetry: () -> Unit,
@@ -135,6 +136,16 @@ fun ScanScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 if (recipe != null) {
+                    if (lastRecipeFromIndian) {
+                        Text(
+                            text = stringResource(R.string.indian_source_badge),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 4.dp),
+                        )
+                    }
                     RecipeDetails(recipe = recipe)
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(

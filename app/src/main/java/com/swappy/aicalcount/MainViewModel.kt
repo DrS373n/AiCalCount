@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.swappy.aicalcount.data.indian.IndianLocalSource
 import com.swappy.aicalcount.data.meals.MealDiaryRepository
 import com.swappy.aicalcount.data.onboarding.OnboardingRepository
 import com.swappy.aicalcount.data.progress.ProgressRepository
@@ -12,9 +13,11 @@ import com.swappy.aicalcount.network.Nutrition
 import com.swappy.aicalcount.network.ProductByUpcResponse
 import com.swappy.aicalcount.network.Recipe
 import com.swappy.aicalcount.network.RetrofitClient
+import com.swappy.aicalcount.network.SpoonacularSource
 import com.swappy.aicalcount.network.toRecipe
 import com.swappy.aicalcount.util.ApiUsageManager
 import com.swappy.aicalcount.util.AppError
+import com.swappy.aicalcount.util.GeminiImageToDish
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +37,8 @@ class MainViewModel(
 ) : AndroidViewModel(application) {
 
     private val apiUsageManager = ApiUsageManager(application)
+    private val indianLocalSource = IndianLocalSource(application)
+    private val spoonacularSource = SpoonacularSource(RetrofitClient.spoonacularService)
 
     private val _bitmap = MutableStateFlow<Bitmap?>(null)
     val bitmap = _bitmap.asStateFlow()
@@ -54,19 +59,40 @@ class MainViewModel(
     private val _snackbarMessageKey = MutableStateFlow<String?>(null)
     val snackbarMessageKey = _snackbarMessageKey.asStateFlow()
 
+    /** True when the current recipe came from Indian local data (for optional UI badge). */
+    private val _lastRecipeFromIndian = MutableStateFlow(false)
+    val lastRecipeFromIndian = _lastRecipeFromIndian.asStateFlow()
+
     fun clearSnackbarMessage() {
         _snackbarMessageKey.value = null
     }
 
+    /** When true, try Gemini → dish name → Indian local data first for image scan; else use Spoonacular only. */
+    private val preferIndianImage = true
+
     fun analyzeImage(bitmap: Bitmap, apiKey: String) {
-        if (!apiUsageManager.canMakeApiCall()) {
-            _showApiLimitNotification.value = true
-            return
-        }
         viewModelScope.launch {
             _loading.value = true
             _appError.value = null
             try {
+                if (preferIndianImage) {
+                    val dishName = withContext(Dispatchers.IO) { GeminiImageToDish.getDishName(bitmap) }
+                    val indianRecipe = dishName?.let { indianLocalSource.searchByText(it) }
+                    if (indianRecipe != null) {
+                        _lastRecipeFromIndian.value = true
+                        _bitmap.value = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) ?: bitmap
+                        _recipe.value = indianRecipe
+                        onboardingRepository.setHasLoggedMeal()
+                        progressRepository.recordMealLogged()
+                        extractAndAddMacros(indianRecipe)
+                        return@launch
+                    }
+                }
+                _lastRecipeFromIndian.value = false
+                if (!apiUsageManager.canMakeApiCall()) {
+                    _showApiLimitNotification.value = true
+                    return@launch
+                }
                 val stream = ByteArrayOutputStream()
                 if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)) {
                     _appError.value = AppError.Unknown(detail = "Could not encode image")
@@ -78,7 +104,6 @@ class MainViewModel(
                     RetrofitClient.spoonacularService.analyzeImage(filePart, apiKey)
                 }
                 val recipe = response.toRecipe()
-                // Store a copy so we own the pixels; original may be recycled by caller
                 _bitmap.value = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) ?: bitmap
                 _recipe.value = recipe
                 apiUsageManager.recordApiCall()
@@ -105,29 +130,34 @@ class MainViewModel(
             _appError.value = AppError.InvalidInput(detail = "Please describe your meal.")
             return
         }
-        if (!apiUsageManager.canMakeApiCall()) {
-            _showApiLimitNotification.value = true
-            return
-        }
         viewModelScope.launch {
             _loading.value = true
             _appError.value = null
             try {
-                val response = RetrofitClient.spoonacularService.searchRecipesWithNutrition(
-                    apiKey = apiKey,
-                    query = query,
-                    number = 1,
-                    addRecipeNutrition = true
-                )
-                val recipe = response.toRecipe()
-                _recipe.value = recipe
-                if (recipe == null)
-                    _appError.value = AppError.InvalidInput(detail = "No nutrition data found for that description.")
-                else {
-                    apiUsageManager.recordApiCall()
+                val indianRecipe = indianLocalSource.searchByText(query)
+                if (indianRecipe != null) {
+                    _lastRecipeFromIndian.value = true
+                    _recipe.value = indianRecipe
                     onboardingRepository.setHasLoggedMeal()
                     progressRepository.recordMealLogged()
-                    extractAndAddMacros(recipe)
+                    extractAndAddMacros(indianRecipe)
+                } else {
+                    _lastRecipeFromIndian.value = false
+                    if (!apiUsageManager.canMakeApiCall()) {
+                        _showApiLimitNotification.value = true
+                    } else {
+                        val recipe = spoonacularSource.searchByText(query, apiKey)
+                        _lastRecipeFromIndian.value = false
+                        _recipe.value = recipe
+                        if (recipe == null)
+                            _appError.value = AppError.InvalidInput(detail = "No nutrition data found for that description.")
+                        else {
+                            apiUsageManager.recordApiCall()
+                            onboardingRepository.setHasLoggedMeal()
+                            progressRepository.recordMealLogged()
+                            extractAndAddMacros(recipe)
+                        }
+                    }
                 }
             } catch (e: IOException) {
                 _appError.value = AppError.Network(detail = e.message)
@@ -148,6 +178,7 @@ class MainViewModel(
         _bitmap.value = null
         _recipe.value = null
         _appError.value = null
+        _lastRecipeFromIndian.value = false
     }
 
     fun setBitmapAndAnalyze(bitmap: Bitmap?, apiKey: String) {
@@ -280,29 +311,33 @@ class MainViewModel(
             _appError.value = AppError.InvalidInput(detail = "Please enter what this food is.")
             return
         }
-        if (!apiUsageManager.canMakeApiCall()) {
-            _showApiLimitNotification.value = true
-            return
-        }
         viewModelScope.launch {
             _loading.value = true
             _appError.value = null
             try {
                 subtractMacros(_recipe.value)
-                val response = RetrofitClient.spoonacularService.searchRecipesWithNutrition(
-                    apiKey = apiKey,
-                    query = trimmed,
-                    number = 1,
-                    addRecipeNutrition = true
-                )
-                val recipe = response.toRecipe()
-                _recipe.value = recipe
-                if (recipe == null) {
-                    _appError.value = AppError.InvalidInput(detail = "No nutrition data found for that. Try a different description.")
-                } else {
-                    apiUsageManager.recordApiCall()
-                    extractAndAddMacros(recipe)
+                val indianRecipe = indianLocalSource.searchByText(trimmed)
+                if (indianRecipe != null) {
+                    _lastRecipeFromIndian.value = true
+                    _recipe.value = indianRecipe
+                    extractAndAddMacros(indianRecipe)
                     _snackbarMessageKey.value = "added_to_day"
+                } else {
+                    _lastRecipeFromIndian.value = false
+                    if (!apiUsageManager.canMakeApiCall()) {
+                        _showApiLimitNotification.value = true
+                    } else {
+                        val recipe = spoonacularSource.searchByText(trimmed, apiKey)
+                        _lastRecipeFromIndian.value = false
+                        _recipe.value = recipe
+                        if (recipe == null) {
+                            _appError.value = AppError.InvalidInput(detail = "No nutrition data found for that. Try a different description.")
+                        } else {
+                            apiUsageManager.recordApiCall()
+                            extractAndAddMacros(recipe)
+                            _snackbarMessageKey.value = "added_to_day"
+                        }
+                    }
                 }
             } catch (e: IOException) {
                 _appError.value = AppError.Network(detail = e.message)

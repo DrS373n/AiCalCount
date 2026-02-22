@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +35,7 @@ import com.swappy.aicalcount.network.Recipe
 fun DescribeScreen(
     loading: Boolean,
     recipe: Recipe?,
+    lastRecipeFromIndian: Boolean = false,
     onDescribeSubmit: (String) -> Unit,
     hasVoicePermission: Boolean = true,
     onRequestVoicePermission: () -> Unit = {},
@@ -84,6 +86,16 @@ fun DescribeScreen(
         }
         if (recipe != null) {
             Spacer(modifier = Modifier.height(24.dp))
+            if (lastRecipeFromIndian) {
+                Text(
+                    text = stringResource(R.string.indian_source_badge),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
+                )
+            }
             RecipeDetails(recipe = recipe)
         }
     }
