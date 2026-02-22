@@ -3,6 +3,7 @@ package com.swappy.aicalcount.navigation
 object NavRoutes {
     const val Dashboard = "dashboard"
     const val Home = "home"
+    const val Diary = "diary"
     const val Progress = "progress"
     const val Profile = "profile"
     const val Scan = "scan"
@@ -15,4 +16,5 @@ object NavRoutes {
     const val Compare = "compare"
     const val RecipeCalculator = "recipe_calculator"
     const val Coach = "coach"
+    const val Chat = "chat"
 }

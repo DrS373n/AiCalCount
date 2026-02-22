@@ -52,6 +52,8 @@ fun ProgressTabScreen(
     weightHistory: List<Pair<String, Float>>,
     streakCount: Int,
     weekDaysLogged: List<Boolean>,
+    weeklyCalories: List<Pair<String, Float>> = emptyList(),
+    goalCalories: Float = 0f,
     onLogWeight: () -> Unit,
     onNavigateToCompare: () -> Unit,
     onImportFromHealthConnect: () -> Unit = {},
@@ -218,6 +220,13 @@ fun ProgressTabScreen(
         }
         Spacer(modifier = Modifier.height(16.dp))
 
+        WeeklyCaloriesCard(
+            weeklyCalories = weeklyCalories,
+            goalCalories = goalCalories,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         if (weightHistory.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -363,36 +372,100 @@ fun ProgressTabScreen(
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
-            "Daily Average Calories",
-            style = MaterialTheme.typography.titleSmall,
-            color = TextSecondary
-        )
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                "2861",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                " cal  ",
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextSecondary
-            )
-            Text(
-                "+90%",
-                style = MaterialTheme.typography.bodyMedium,
-                color = ProgressGreen
-            )
-        }
-        Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = onNavigateToCompare,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp)
         ) {
             Text("Compare progress photos")
+        }
+    }
+}
+
+@Composable
+private fun WeeklyCaloriesCard(
+    weeklyCalories: List<Pair<String, Float>>,
+    goalCalories: Float,
+) {
+    val daysLogged = weeklyCalories.count { it.second > 0f }
+    val totalCal = weeklyCalories.sumOf { it.second.toDouble() }.toFloat()
+    val dailyAvg = if (weeklyCalories.isNotEmpty()) totalCal / weeklyCalories.size else 0f
+    val maxCal = (weeklyCalories.maxOfOrNull { it.second } ?: 1f).coerceAtLeast(1f)
+    val dateRangeStr = if (weeklyCalories.size >= 2) {
+        val first = weeklyCalories.first().first
+        val last = weeklyCalories.last().first
+        "$first – $last"
+    } else ""
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                stringResource(R.string.progress_weekly_calories),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (dateRangeStr.isNotEmpty()) {
+                Text(
+                    dateRangeStr,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                weeklyCalories.forEach { (_, cal) ->
+                    val heightFraction = (cal / maxCal).coerceIn(0f, 1f)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
+                                .padding(horizontal = 2.dp),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(((80 * heightFraction).toInt().coerceAtLeast(4)).dp)
+                                    .background(
+                                        if (cal > 0f) ProgressGreen else MaterialTheme.colorScheme.surfaceVariant,
+                                        RoundedCornerShape(4.dp)
+                                    )
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    stringResource(R.string.progress_days_logged, daysLogged),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+                Text(
+                    stringResource(R.string.progress_daily_avg, dailyAvg.toInt()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+                Text(
+                    stringResource(R.string.progress_daily_goal, goalCalories.toInt()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+            }
         }
     }
 }
@@ -432,6 +505,8 @@ fun ProgressTabScreenPreview() {
             weightHistory = listOf("2025-01-01" to 75f, "2025-02-01" to 73f, "2025-02-15" to 72.5f),
             streakCount = 5,
             weekDaysLogged = listOf(true, true, false, true, true, false, false),
+            weeklyCalories = emptyList(),
+            goalCalories = 2000f,
             onLogWeight = {},
             onNavigateToCompare = {},
         )

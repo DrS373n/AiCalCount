@@ -11,6 +11,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,12 +86,15 @@ import com.swappy.aicalcount.data.diet.DietPreferencesRepository
 import com.swappy.aicalcount.data.onboarding.OnboardingRepository
 import com.swappy.aicalcount.data.progress.ProgressRepository
 import com.swappy.aicalcount.data.health.HealthConnectRepository
+import com.swappy.aicalcount.data.meals.LoggedMeal
+import com.swappy.aicalcount.data.meals.MealDiaryRepository
 import com.swappy.aicalcount.data.profile.UserProfile
 import com.swappy.aicalcount.data.profile.UserProfileRepository
 import com.swappy.aicalcount.navigation.NavRoutes
 import com.swappy.aicalcount.util.ApiUsageManager
 import com.swappy.aicalcount.ui.barcode.BarcodeScanScreen
 import com.swappy.aicalcount.ui.compare.CompareScreen
+import com.swappy.aicalcount.ui.dashboard.DiaryTabScreen
 import com.swappy.aicalcount.ui.dashboard.HomeTabScreen
 import com.swappy.aicalcount.ui.dashboard.ProgressTabScreen
 import com.swappy.aicalcount.ui.dashboard.ProfileTabScreen
@@ -99,6 +104,8 @@ import com.swappy.aicalcount.ui.nutrition.NutritionDetailScreen
 import com.swappy.aicalcount.ui.onboarding.OnboardingScreen
 import com.swappy.aicalcount.ui.onboarding.ProfileSetupScreen
 import com.swappy.aicalcount.ui.qa.GenerativeMealQaViewModel
+import com.swappy.aicalcount.ui.chat.ChatScreen
+import com.swappy.aicalcount.ui.chat.ChatViewModel
 import com.swappy.aicalcount.ui.coach.CoachScreen
 import com.swappy.aicalcount.ui.coach.CoachViewModel
 import com.swappy.aicalcount.ui.qa.MealQaScreen
@@ -123,6 +130,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun HomeRoute(
+    todayMeals: List<LoggedMeal>,
     lastUploadedRecipe: com.swappy.aicalcount.network.Recipe?,
     lastUploadedImage: android.graphics.Bitmap?,
     onNavigateToScan: () -> Unit,
@@ -146,7 +154,9 @@ private fun HomeRoute(
     val streakCount by progressRepo.streakCount.collectAsState(initial = 0)
     val loggedDates by progressRepo.loggedDates.collectAsState(initial = emptySet())
     val preferences by dietPrefsRepo.preferences.collectAsState(initial = DietPreferences())
-    val goals = remember(preferences) { com.swappy.aicalcount.data.diet.DietGoalHelper.computeGoals(preferences) }
+    val profileRepo = remember(appContext) { UserProfileRepository(appContext) }
+    val profile by profileRepo.profile.collectAsState(initial = UserProfile())
+    val goals = remember(profile, preferences) { com.swappy.aicalcount.data.diet.DietGoalHelper.computeGoals(profile, preferences) }
     val todayCalories = todayProtein * 4f + todayCarbs * 4f + todayFat * 9f
     val todayGoalMet = goals.calories > 0f && todayCalories >= goals.calories
     val todayStr = java.time.LocalDate.now().toString()
@@ -172,6 +182,7 @@ private fun HomeRoute(
         hydrationGoalGlasses = hydrationGoalGlasses,
         streakCount = streakCount,
         datesWithGoalsMet = datesWithGoalsMet,
+        todayMeals = todayMeals,
         lastUploadedRecipe = lastUploadedRecipe,
         lastUploadedImage = lastUploadedImage,
         onAddHydration = onAddHydration,
@@ -190,6 +201,7 @@ private fun OnboardingGate() {
     val profileSetupComplete by repository.isProfileSetupComplete.collectAsState(initial = false)
     val pendingDietSummary by repository.pendingDietSummary.collectAsState(initial = false)
     val preferences by dietPrefsRepo.preferences.collectAsState(initial = DietPreferences())
+    val profile by profileRepo.profile.collectAsState(initial = UserProfile())
     val scope = rememberCoroutineScope()
 
     when {
@@ -208,6 +220,7 @@ private fun OnboardingGate() {
             },
         )
         !profileSetupComplete && pendingDietSummary -> DietPlanSummaryScreen(
+            profile = profile,
             preferences = preferences,
             onStartOver = {
                 scope.launch {
@@ -222,18 +235,27 @@ private fun OnboardingGate() {
         )
         !profileSetupComplete -> Box(modifier = Modifier.fillMaxSize().padding(top = 84.dp)) {
             ProfileSetupScreen(
-                onComplete = { displayName, weightKg, heightCm, age, preferences, photoPath ->
+                onComplete = { displayName, biologicalSex, weightKg, heightCm, goalWeightKg, birthdate, preferences, photoPath ->
                     scope.launch {
+                        val age = birthdate?.let { java.time.temporal.ChronoUnit.YEARS.between(it, java.time.LocalDate.now()).toInt() } ?: 0
+                        val inferredGoal = when {
+                            goalWeightKg < weightKg -> com.swappy.aicalcount.data.diet.DietGoal.LoseWeight
+                            goalWeightKg > weightKg -> com.swappy.aicalcount.data.diet.DietGoal.GainMuscle
+                            else -> com.swappy.aicalcount.data.diet.DietGoal.Maintain
+                        }
                         profileRepo.save(
                             UserProfile(
                                 displayName = displayName,
+                                biologicalSex = biologicalSex,
                                 weightKg = weightKg,
+                                goalWeightKg = goalWeightKg,
                                 heightCm = heightCm,
+                                birthdateEpochDay = birthdate?.toEpochDay(),
                                 age = age,
                                 profilePhotoPath = photoPath,
                             ),
                         )
-                        dietPrefsRepo.save(preferences)
+                        dietPrefsRepo.save(preferences.copy(goal = inferredGoal))
                         repository.setPendingDietSummary(true)
                     }
                 },
@@ -247,6 +269,7 @@ private fun OnboardingGate() {
 
 private val tabRoutes = setOf(
     NavRoutes.Home,
+    NavRoutes.Diary,
     NavRoutes.Progress,
     NavRoutes.Profile,
 )
@@ -370,12 +393,14 @@ fun AppNavHostStateless(
                 NavigationBar(tonalElevation = 8.dp) {
                     listOf(
                         "Home" to NavRoutes.Home,
+                        "Diary" to NavRoutes.Diary,
                         "Progress" to NavRoutes.Progress,
                         "Profile" to NavRoutes.Profile,
                     ).forEach { (label, route) ->
                         val selected = currentRoute == route
                         val navIcon = when (label) {
                             "Home" -> Icons.Outlined.Home
+                            "Diary" -> Icons.Outlined.Edit
                             "Progress" -> Icons.Outlined.BarChart
                             "Profile" -> Icons.Outlined.Person
                             else -> Icons.Outlined.Home
@@ -505,6 +530,9 @@ fun AppNavHostStateless(
                 val appContext = LocalContext.current.applicationContext
                 val onboardingRepo = remember(application) { OnboardingRepository(application) }
                 val progressRepo = remember(appContext) { ProgressRepository(appContext) }
+                val mealDiaryRepo = remember(appContext) { MealDiaryRepository(appContext) }
+                val todayStr = java.time.LocalDate.now().toString()
+                val todayMeals by mealDiaryRepo.mealsForDate(todayStr).collectAsState(initial = emptyList())
                 val firstRunTooltipMessage = stringResource(R.string.first_run_fab_tooltip)
                 val lastUploadedRecipe by mainViewModel?.recipe?.collectAsState(initial = null) ?: remember { mutableStateOf<com.swappy.aicalcount.network.Recipe?>(null) }
                 val lastUploadedImage by mainViewModel?.bitmap?.collectAsState(initial = null) ?: remember { mutableStateOf<android.graphics.Bitmap?>(null) }
@@ -518,6 +546,7 @@ fun AppNavHostStateless(
                     }
                 }
                 HomeRoute(
+                    todayMeals = todayMeals,
                     lastUploadedRecipe = lastUploadedRecipe,
                     lastUploadedImage = lastUploadedImage,
                     onNavigateToScan = { navController.navigate(NavRoutes.Scan) },
@@ -525,19 +554,42 @@ fun AppNavHostStateless(
                     onAddHydration = { scope.launch { progressRepo.addHydrationGlass() } },
                 )
             }
+            composable(NavRoutes.Diary) {
+                val appContext = LocalContext.current.applicationContext
+                val mealDiaryRepo = remember(appContext) { MealDiaryRepository(appContext) }
+                val allMeals by mealDiaryRepo.allMeals.collectAsState(initial = emptyList())
+                DiaryTabScreen(
+                    meals = allMeals,
+                    onTapToLog = { navController.navigate(NavRoutes.Scan) },
+                )
+            }
             composable(NavRoutes.Progress) {
                 val appContext = LocalContext.current.applicationContext
                 val profileRepo = remember(appContext) { UserProfileRepository(appContext) }
                 val progressRepo = remember(appContext) { ProgressRepository(appContext) }
+                val mealDiaryRepo = remember(appContext) { MealDiaryRepository(appContext) }
+                val dietPrefsRepo = remember(appContext) { DietPreferencesRepository(appContext) }
                 val profile by profileRepo.profile.collectAsState(initial = UserProfile())
+                val preferences by dietPrefsRepo.preferences.collectAsState(initial = DietPreferences())
+                val goals = remember(profile, preferences) { com.swappy.aicalcount.data.diet.DietGoalHelper.computeGoals(profile, preferences) }
+                val allMeals by mealDiaryRepo.allMeals.collectAsState(initial = emptyList())
+                val weeklyCalories = remember(allMeals) {
+                    val todayRef = java.time.LocalDate.now()
+                    (0..6).map { offset ->
+                        val d = todayRef.minusDays(offset.toLong())
+                        val dateStr = d.toString()
+                        val total = allMeals.filter { it.date == dateStr }.sumOf { it.calories.toDouble() }.toFloat()
+                        dateStr to total
+                    }.reversed()
+                }
                 val streakCount by progressRepo.streakCount.collectAsState(initial = 0)
                 val loggedDates by progressRepo.loggedDates.collectAsState(initial = emptySet())
                 val weightHistory by progressRepo.weightHistory.collectAsState(initial = emptyList())
                 var showLogWeightDialog by remember { mutableStateOf(false) }
                 var logWeightInput by remember { mutableStateOf(profile.weightKg.toString().takeIf { it != "0.0" } ?: "") }
                 val scope = rememberCoroutineScope()
-                val today = java.time.LocalDate.now()
-                val startOfWeek = today.with(java.time.DayOfWeek.SUNDAY)
+                val progressToday = java.time.LocalDate.now()
+                val startOfWeek = progressToday.with(java.time.DayOfWeek.SUNDAY)
                 val weekDaysLogged = (0..6).map { startOfWeek.plusDays(it.toLong()).toString() in loggedDates }
                 if (showLogWeightDialog) {
                     AlertDialog(
@@ -556,7 +608,7 @@ fun AppNavHostStateless(
                                 val kg = logWeightInput.toFloatOrNull()
                                 if (kg != null && kg > 0f && kg < 500f) {
                                     scope.launch {
-                                        progressRepo.addWeightEntry(today.toString(), kg)
+                                        progressRepo.addWeightEntry(progressToday.toString(), kg)
                                         profileRepo.save(profile.copy(weightKg = kg))
                                     }
                                     showLogWeightDialog = false
@@ -580,6 +632,8 @@ fun AppNavHostStateless(
                     weightHistory = weightHistory,
                     streakCount = streakCount,
                     weekDaysLogged = weekDaysLogged,
+                    weeklyCalories = weeklyCalories,
+                    goalCalories = goals.calories,
                     onLogWeight = {
                         logWeightInput = profile.weightKg.toString().takeIf { it != "0.0" } ?: ""
                         showLogWeightDialog = true
@@ -675,6 +729,8 @@ fun AppNavHostStateless(
                     onNavigateToMealQa = { navController.navigate(NavRoutes.MealQa) },
                     onNavigateToRecipeCalculator = { navController.navigate(NavRoutes.RecipeCalculator) },
                     onNavigateToCoach = { navController.navigate(NavRoutes.Coach) },
+                    onNavigateToChat = { navController.navigate(NavRoutes.Chat) },
+                    onNavigateToWeightTracker = { navController.navigate(NavRoutes.Progress) },
                     apiRemainingCalls = apiUsageManager.getRemainingCalls(),
                 )
             }
@@ -809,6 +865,16 @@ fun AppNavHostStateless(
                     onGetSummary = coachViewModel::loadWeeklySummary,
                 )
             }
+            composable(NavRoutes.Chat) {
+                val chatViewModel: ChatViewModel = viewModel(factory = AppViewModelFactory(application))
+                val chatMessages by chatViewModel.messages.collectAsState()
+                val chatLoading by chatViewModel.loading.collectAsState()
+                ChatScreen(
+                    messages = chatMessages,
+                    loading = chatLoading,
+                    onSendMessage = chatViewModel::sendMessage,
+                )
+            }
             composable(NavRoutes.RecipeCalculator) {
                 val recipe by mainViewModel!!.recipe.collectAsState()
                 val loading by mainViewModel.loading.collectAsState()
@@ -849,8 +915,11 @@ fun AppNavHostStateless(
                 val step by dietViewModel.step.collectAsState()
                 val preferences by dietViewModel.preferences.collectAsState()
                 val planComplete by dietViewModel.planComplete.collectAsState()
+                val profileRepo = remember(application) { UserProfileRepository(application) }
+                val profile by profileRepo.profile.collectAsState(initial = UserProfile())
                 if (planComplete) {
                     DietPlanSummaryScreen(
+                        profile = profile,
                         preferences = preferences,
                         onStartOver = { dietViewModel.resetPlanView() },
                         onNext = {
@@ -887,54 +956,105 @@ fun AppNavHostStateless(
 
 @Composable
 fun DietPlanSummaryScreen(
+    profile: UserProfile,
     preferences: DietPreferences,
     onStartOver: () -> Unit,
     onNext: () -> Unit,
 ) {
+    val goals = remember(profile, preferences) {
+        com.swappy.aicalcount.data.diet.DietGoalHelper.computeGoals(profile, preferences)
+    }
+    val bmr = remember(profile) {
+        com.swappy.aicalcount.data.diet.DietGoalHelper.computeBmr(
+            profile.weightKg, profile.heightCm, profile.age, profile.biologicalSex
+        )
+    }
+    val tdee = remember(bmr, preferences) {
+        bmr?.let { com.swappy.aicalcount.data.diet.DietGoalHelper.computeTdee(it, preferences.activityLevel) }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
         Text(
-            text = stringResource(R.string.diet_plan_ready),
+            text = stringResource(R.string.nutrition_plan_title),
             style = MaterialTheme.typography.headlineSmall,
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.diet_plan_summary),
+            text = stringResource(R.string.nutrition_plan_goal_label),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = when (preferences.goal) {
+                com.swappy.aicalcount.data.diet.DietGoal.LoseWeight -> stringResource(R.string.diet_goal_lose)
+                com.swappy.aicalcount.data.diet.DietGoal.Maintain -> stringResource(R.string.diet_goal_maintain)
+                com.swappy.aicalcount.data.diet.DietGoal.GainMuscle -> stringResource(R.string.diet_goal_gain)
+            } + " • " + when (preferences.goalPace) {
+                com.swappy.aicalcount.data.diet.GoalPace.Slowly -> stringResource(R.string.goal_pace_slowly)
+                com.swappy.aicalcount.data.diet.GoalPace.Steadily -> stringResource(R.string.goal_pace_steadily)
+                com.swappy.aicalcount.data.diet.GoalPace.Quickly -> stringResource(R.string.goal_pace_quickly)
+            },
             style = MaterialTheme.typography.bodyLarge,
         )
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
-            text = "Goal: ${preferences.goal.name}, Activity: ${preferences.activityLevel.name}, Restrictions: ${preferences.restrictions.joinToString { it.name }}",
-            modifier = Modifier.padding(top = 16.dp),
+            text = stringResource(R.string.nutrition_plan_daily_targets),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onStartOver,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.diet_start_over))
-        }
         Text(
-            text = stringResource(R.string.diet_summary_start_over_desc),
+            text = stringResource(R.string.nutrition_plan_targets_value,
+                goals.calories.toInt(),
+                goals.proteinG.toInt(),
+                goals.fatG.toInt(),
+                goals.carbsG.toInt(),
+            ),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = stringResource(R.string.nutrition_plan_details),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.nutrition_plan_details_value,
+                profile.age,
+                profile.heightCm.toInt(),
+                profile.weightKg.toInt(),
+                profile.goalWeightKg.toInt(),
+                when (preferences.activityLevel) {
+                    com.swappy.aicalcount.data.diet.ActivityLevel.Sedentary -> stringResource(R.string.diet_activity_sedentary)
+                    com.swappy.aicalcount.data.diet.ActivityLevel.LightlyActive -> stringResource(R.string.diet_activity_lightly_active)
+                    com.swappy.aicalcount.data.diet.ActivityLevel.ModeratelyActive -> stringResource(R.string.diet_activity_moderately_active)
+                    com.swappy.aicalcount.data.diet.ActivityLevel.HighlyActive -> stringResource(R.string.diet_activity_highly_active)
+                },
+                (bmr?.toInt() ?: 0).toString(),
+                (tdee?.toInt() ?: 0).toString(),
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = stringResource(R.string.nutrition_plan_disclaimer),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = onNext,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(stringResource(R.string.diet_summary_next))
+            Text(stringResource(R.string.nutrition_plan_lets_go))
         }
-        Text(
-            text = stringResource(R.string.diet_summary_next_desc),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        Spacer(modifier = Modifier.height(12.dp))
+        TextButton(onClick = onStartOver, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.diet_start_over))
+        }
     }
 }
 
@@ -943,9 +1063,10 @@ fun DietPlanSummaryScreen(
 fun DietPlanSummaryScreenPreview() {
     AiCalCountTheme {
         DietPlanSummaryScreen(
+            profile = UserProfile(age = 30, weightKg = 70f, goalWeightKg = 65f, heightCm = 170f),
             preferences = DietPreferences(
                 goal = DietGoal.LoseWeight,
-                activityLevel = ActivityLevel.Medium,
+                activityLevel = ActivityLevel.ModeratelyActive,
                 restrictions = emptyList()
             ),
             onStartOver = {},
@@ -959,6 +1080,7 @@ fun DietPlanSummaryScreenPreview() {
 fun HomeRoutePreview() {
     AiCalCountTheme {
         HomeRoute(
+            todayMeals = emptyList(),
             lastUploadedRecipe = null,
             lastUploadedImage = null,
             onNavigateToScan = {},

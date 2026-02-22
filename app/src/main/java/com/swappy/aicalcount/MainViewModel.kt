@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.swappy.aicalcount.data.meals.MealDiaryRepository
 import com.swappy.aicalcount.data.onboarding.OnboardingRepository
 import com.swappy.aicalcount.data.progress.ProgressRepository
 import com.swappy.aicalcount.network.AnalyzedRecipe
@@ -28,7 +29,8 @@ import java.io.IOException
 class MainViewModel(
     application: Application,
     private val onboardingRepository: OnboardingRepository,
-    private val progressRepository: ProgressRepository
+    private val progressRepository: ProgressRepository,
+    private val mealDiaryRepository: MealDiaryRepository,
 ) : AndroidViewModel(application) {
 
     private val apiUsageManager = ApiUsageManager(application)
@@ -228,7 +230,8 @@ class MainViewModel(
 
     private suspend fun extractAndAddMacros(recipe: Recipe?) {
         recipe ?: return
-        val nutrients = recipe.recipes.firstOrNull()?.nutrition?.nutrients ?: return
+        val first = recipe.recipes.firstOrNull() ?: return
+        val nutrients = first.nutrition?.nutrients ?: return
         fun findAmount(nameVariants: List<String>): Float =
             nutrients.firstOrNull { n -> nameVariants.any { n.name.equals(it, ignoreCase = true) } }?.amount?.toFloat() ?: 0f
         val protein = findAmount(listOf("Protein"))
@@ -237,8 +240,18 @@ class MainViewModel(
         val fiber = findAmount(listOf("Fiber"))
         val sugar = findAmount(listOf("Sugar"))
         val sodium = findAmount(listOf("Sodium"))
+        val calories = findAmount(listOf("Calories"))
         if (protein > 0f || carbs > 0f || fat > 0f) {
             progressRepository.addMealMacros(protein, carbs, fat, fiber, sugar, sodium)
+            mealDiaryRepository.addMeal(
+                date = java.time.LocalDate.now().toString(),
+                title = first.title ?: "Meal",
+                imagePath = null,
+                calories = calories,
+                proteinG = protein,
+                carbsG = carbs,
+                fatG = fat,
+            )
             _snackbarMessageKey.value = "added_to_day"
         }
     }
@@ -309,7 +322,8 @@ class MainViewModel(
     /** Add one serving of a recipe to today's macros (recipe nutrition / servings). */
     suspend fun addRecipeServingToToday(recipe: Recipe?, servings: Int) {
         if (recipe == null || servings < 1) return
-        val nutrients = recipe.recipes.firstOrNull()?.nutrition?.nutrients ?: return
+        val first = recipe.recipes.firstOrNull() ?: return
+        val nutrients = first.nutrition?.nutrients ?: return
         fun findAmount(nameVariants: List<String>): Float =
             nutrients.firstOrNull { n -> nameVariants.any { n.name.equals(it, ignoreCase = true) } }?.amount?.toFloat() ?: 0f
         val div = servings.toFloat()
@@ -319,8 +333,18 @@ class MainViewModel(
         val fiber = findAmount(listOf("Fiber")) / div
         val sugar = findAmount(listOf("Sugar")) / div
         val sodium = findAmount(listOf("Sodium")) / div
+        val calories = findAmount(listOf("Calories")) / div
         if (protein > 0f || carbs > 0f || fat > 0f) {
             progressRepository.addMealMacros(protein, carbs, fat, fiber, sugar, sodium)
+            mealDiaryRepository.addMeal(
+                date = java.time.LocalDate.now().toString(),
+                title = first.title ?: "Meal",
+                imagePath = null,
+                calories = calories,
+                proteinG = protein,
+                carbsG = carbs,
+                fatG = fat,
+            )
             _snackbarMessageKey.value = "added_to_day"
         }
     }

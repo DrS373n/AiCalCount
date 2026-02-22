@@ -17,6 +17,7 @@ private val KEY_PREFERENCES = stringPreferencesKey("diet_preferences")
 private fun DietPreferences.toStorageString(): String = buildString {
     append(goal.name).append("|")
     append(activityLevel.name).append("|")
+    append(goalPace.name).append("|")
     append(restrictions.map { it.name }.joinToString(","))
 }
 
@@ -24,11 +25,16 @@ private fun String.toDietPreferences(): DietPreferences {
     val parts = split("|")
     if (parts.size < 3) return DietPreferences()
     val goal = DietGoal.entries.find { it.name == parts[0] } ?: DietGoal.Maintain
-    val activity = ActivityLevel.entries.find { it.name == parts[1] } ?: ActivityLevel.Medium
-    val rest = parts[2].split(",").mapNotNull { s ->
+    val activity = ActivityLevel.entries.find { it.name == parts[1] } ?: ActivityLevel.ModeratelyActive
+    val (pace, restStr) = if (parts.size >= 4) {
+        Pair(GoalPace.entries.find { it.name == parts[2] } ?: GoalPace.Steadily, parts[3])
+    } else {
+        Pair(GoalPace.Steadily, parts[2])
+    }
+    val rest = restStr.split(",").mapNotNull { s ->
         if (s.isBlank()) null else DietRestriction.entries.find { it.name == s }
     }.filter { it != DietRestriction.None }
-    return DietPreferences(goal = goal, activityLevel = activity, restrictions = rest)
+    return DietPreferences(goal = goal, activityLevel = activity, goalPace = pace, restrictions = rest)
 }
 
 class DietPreferencesRepository(private val context: Context) {

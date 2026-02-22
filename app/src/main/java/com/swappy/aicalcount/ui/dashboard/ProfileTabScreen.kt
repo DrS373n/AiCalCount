@@ -47,6 +47,8 @@ fun ProfileTabScreen(
     onNavigateToMealQa: () -> Unit,
     onNavigateToRecipeCalculator: () -> Unit = {},
     onNavigateToCoach: () -> Unit = {},
+    onNavigateToChat: () -> Unit = {},
+    onNavigateToWeightTracker: () -> Unit = {},
     apiRemainingCalls: Int? = null,
     modifier: Modifier = Modifier
 ) {
@@ -127,11 +129,19 @@ fun ProfileTabScreen(
         }
         Spacer(modifier = Modifier.height(24.dp))
 
-        ProfileMenuItem(stringResource(R.string.home_my_diet_plan), onNavigateToDietPlan)
+        ProfileMenuItem(stringResource(R.string.more_settings)) { }
         Spacer(modifier = Modifier.height(8.dp))
-        ProfileMenuItem(stringResource(R.string.recipe_calc_menu), onNavigateToRecipeCalculator)
+        ProfileMenuItem(stringResource(R.string.more_profile)) { onChangePhotoClick() }
+        Spacer(modifier = Modifier.height(8.dp))
+        ProfileMenuItem(stringResource(R.string.more_targets), onNavigateToDietPlan)
+        Spacer(modifier = Modifier.height(8.dp))
+        ProfileMenuItem(stringResource(R.string.more_weight_tracker), onNavigateToWeightTracker)
+        Spacer(modifier = Modifier.height(8.dp))
+        ProfileMenuItem(stringResource(R.string.more_foods_recipes), onNavigateToRecipeCalculator)
         Spacer(modifier = Modifier.height(8.dp))
         ProfileMenuItem(stringResource(R.string.coach_menu), onNavigateToCoach)
+        Spacer(modifier = Modifier.height(8.dp))
+        ProfileMenuItem(stringResource(R.string.more_chat), onNavigateToChat)
         Spacer(modifier = Modifier.height(8.dp))
         ProfileMenuItem("Compare progress photos", onNavigateToCompare)
         Spacer(modifier = Modifier.height(8.dp))
@@ -142,6 +152,8 @@ fun ProfileTabScreen(
         ProfileMenuItem(stringResource(R.string.home_upload_label), onNavigateToLabelUpload)
         Spacer(modifier = Modifier.height(8.dp))
         ProfileMenuItem(stringResource(R.string.home_ask_meals), onNavigateToMealQa)
+        Spacer(modifier = Modifier.height(8.dp))
+        ProfileMenuItem(stringResource(R.string.more_help)) { }
     }
 }
 
@@ -180,6 +192,8 @@ fun ProfileTabScreenPreview() {
             onNavigateToMealQa = {},
             onNavigateToRecipeCalculator = {},
             onNavigateToCoach = {},
+            onNavigateToChat = {},
+            onNavigateToWeightTracker = {},
         )
     }
 }

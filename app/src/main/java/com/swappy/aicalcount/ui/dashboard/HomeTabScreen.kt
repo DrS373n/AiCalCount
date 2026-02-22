@@ -21,6 +21,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import com.swappy.aicalcount.R
+import com.swappy.aicalcount.data.meals.LoggedMeal
 import com.swappy.aicalcount.network.Recipe
 import com.swappy.aicalcount.ui.theme.AiCalCountTheme
 import java.text.SimpleDateFormat
@@ -70,6 +73,7 @@ fun HomeTabScreen(
     hydrationGoalGlasses: Int,
     streakCount: Int,
     datesWithGoalsMet: Set<String> = emptySet(),
+    todayMeals: List<LoggedMeal> = emptyList(),
     lastUploadedRecipe: Recipe? = null,
     lastUploadedImage: Bitmap? = null,
     onAddHydration: () -> Unit,
@@ -102,7 +106,23 @@ fun HomeTabScreen(
             } else {
                 item {
                     val todayCalories = todayProtein * 4f + todayCarbs * 4f + todayFat * 9f
-                    CalorieSummaryCard(caloriesEaten = todayCalories, goalCalories = goalCalories)
+                    CalorieSummaryCard(
+                        caloriesEaten = todayCalories,
+                        goalCalories = goalCalories,
+                        todayProtein = todayProtein,
+                        goalProtein = goalProtein,
+                        todayCarbs = todayCarbs,
+                        goalCarbs = goalCarbs,
+                        todayFat = todayFat,
+                        goalFat = goalFat,
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item {
+                    TodaysMealsSection(
+                        meals = todayMeals,
+                        onTapToLog = onNavigateToScan,
+                    )
                 }
                 item { Spacer(modifier = Modifier.height(16.dp)) }
                 item {
@@ -113,31 +133,6 @@ fun HomeTabScreen(
                     )
                 }
                 item { Spacer(modifier = Modifier.height(16.dp)) }
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        MacroCard(
-                            label = "Protein",
-                            current = todayProtein,
-                            goal = goalProtein,
-                            modifier = Modifier.weight(1f)
-                        )
-                        MacroCard(
-                            label = "Carbs",
-                            current = todayCarbs,
-                            goal = goalCarbs,
-                            modifier = Modifier.weight(1f)
-                        )
-                        MacroCard(
-                            label = "Fat",
-                            current = todayFat,
-                            goal = goalFat,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
                 item { Spacer(modifier = Modifier.height(12.dp)) }
                 item {
                     Row(
@@ -302,7 +297,17 @@ private fun waterEmojiForProgress(progress: Float): String = when {
 }
 
 @Composable
-fun CalorieSummaryCard(caloriesEaten: Float, goalCalories: Float) {
+fun CalorieSummaryCard(
+    caloriesEaten: Float,
+    goalCalories: Float,
+    todayProtein: Float = 0f,
+    goalProtein: Float = 0f,
+    todayCarbs: Float = 0f,
+    goalCarbs: Float = 0f,
+    todayFat: Float = 0f,
+    goalFat: Float = 0f,
+) {
+    val remaining = (goalCalories - caloriesEaten).coerceAtLeast(0f).toInt()
     val progress = if (goalCalories > 0f) (caloriesEaten / goalCalories).coerceIn(0f, 1f) else 0f
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -310,38 +315,172 @@ fun CalorieSummaryCard(caloriesEaten: Float, goalCalories: Float) {
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(120.dp),
+                    strokeWidth = 8.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "${caloriesEaten.toInt()}/${goalCalories.toInt()}",
-                        style = MaterialTheme.typography.headlineLarge,
+                        text = "$remaining",
+                        style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(text = "Calories eaten", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = stringResource(R.string.home_calories_remaining),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                Text(
-                    text = calorieEmojiForProgress(progress),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.size(32.dp),
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                InlineMacroChip(
+                    label = stringResource(R.string.home_macro_protein),
+                    current = todayProtein.toInt(),
+                    goal = goalProtein.toInt()
+                )
+                InlineMacroChip(
+                    label = stringResource(R.string.home_macro_carbs),
+                    current = todayCarbs.toInt(),
+                    goal = goalCarbs.toInt()
+                )
+                InlineMacroChip(
+                    label = stringResource(R.string.home_macro_fat),
+                    current = todayFat.toInt(),
+                    goal = goalFat.toInt()
                 )
             }
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 16.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            )
         }
+    }
+}
+
+@Composable
+fun TodaysMealsSection(
+    meals: List<LoggedMeal>,
+    onTapToLog: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.todays_meals_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        if (meals.isEmpty()) {
+            Card(
+                onClick = onTapToLog,
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.todays_meals_empty_cta),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            meals.forEach { meal ->
+                LoggedMealCard(meal = meal, modifier = Modifier.padding(vertical = 4.dp))
+            }
+            Card(
+                onClick = onTapToLog,
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = stringResource(R.string.todays_meals_empty_cta),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoggedMealCard(meal: LoggedMeal, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = meal.title,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = "${meal.calories.toInt()} cal",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InlineMacroChip(label: String, current: Int, goal: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "$current/$goal",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

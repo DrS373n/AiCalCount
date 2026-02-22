@@ -75,9 +75,10 @@ fun DietPlanScreen(
                 ActivityLevel.entries.forEach { level ->
                     RadioButtonRow(
                         text = when (level) {
-                            ActivityLevel.Low -> stringResource(R.string.diet_activity_low)
-                            ActivityLevel.Medium -> stringResource(R.string.diet_activity_medium)
-                            ActivityLevel.High -> stringResource(R.string.diet_activity_high)
+                            ActivityLevel.Sedentary -> stringResource(R.string.diet_activity_sedentary)
+                            ActivityLevel.LightlyActive -> stringResource(R.string.diet_activity_lightly_active)
+                            ActivityLevel.ModeratelyActive -> stringResource(R.string.diet_activity_moderately_active)
+                            ActivityLevel.HighlyActive -> stringResource(R.string.diet_activity_highly_active)
                         },
                         selected = preferences.activityLevel == level,
                         onClick = { onActivitySelect(level) },
