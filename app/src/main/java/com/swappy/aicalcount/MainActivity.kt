@@ -106,8 +106,6 @@ import com.swappy.aicalcount.ui.onboarding.ProfileSetupScreen
 import com.swappy.aicalcount.ui.qa.GenerativeMealQaViewModel
 import com.swappy.aicalcount.ui.chat.ChatScreen
 import com.swappy.aicalcount.ui.chat.ChatViewModel
-import com.swappy.aicalcount.ui.coach.CoachScreen
-import com.swappy.aicalcount.ui.coach.CoachViewModel
 import com.swappy.aicalcount.ui.qa.MealQaScreen
 import com.swappy.aicalcount.ui.recipe.RecipeCalculatorScreen
 import com.swappy.aicalcount.ui.scan.ScanScreen
@@ -205,34 +203,38 @@ private fun OnboardingGate() {
     val scope = rememberCoroutineScope()
 
     when {
-        !completed -> OnboardingScreen(
-            onComplete = {
-                scope.launch {
-                    repository.setOnboardingComplete()
-                    repository.clearHasLoggedMeal()
-                }
-            },
-            onSkip = {
-                scope.launch {
-                    repository.setOnboardingComplete()
-                    repository.clearHasLoggedMeal()
-                }
-            },
-        )
-        !profileSetupComplete && pendingDietSummary -> DietPlanSummaryScreen(
-            profile = profile,
-            preferences = preferences,
-            onStartOver = {
-                scope.launch {
-                    repository.setPendingDietSummary(false)
-                }
-            },
-            onNext = {
-                scope.launch {
-                    repository.setProfileSetupComplete()
-                }
-            },
-        )
+        !completed -> Box(modifier = Modifier.fillMaxSize().padding(top = 84.dp)) {
+            OnboardingScreen(
+                onComplete = {
+                    scope.launch {
+                        repository.setOnboardingComplete()
+                        repository.clearHasLoggedMeal()
+                    }
+                },
+                onSkip = {
+                    scope.launch {
+                        repository.setOnboardingComplete()
+                        repository.clearHasLoggedMeal()
+                    }
+                },
+            )
+        }
+        !profileSetupComplete && pendingDietSummary -> Box(modifier = Modifier.fillMaxSize().padding(top = 84.dp)) {
+            DietPlanSummaryScreen(
+                profile = profile,
+                preferences = preferences,
+                onStartOver = {
+                    scope.launch {
+                        repository.setPendingDietSummary(false)
+                    }
+                },
+                onNext = {
+                    scope.launch {
+                        repository.setProfileSetupComplete()
+                    }
+                },
+            )
+        }
         !profileSetupComplete -> Box(modifier = Modifier.fillMaxSize().padding(top = 84.dp)) {
             ProfileSetupScreen(
                 onComplete = { displayName, biologicalSex, weightKg, heightCm, goalWeightKg, birthdate, preferences, photoPath ->
@@ -520,10 +522,7 @@ fun AppNavHostStateless(
             modifier = Modifier
                 .padding(topPadding)
                 .then(Modifier.statusBarsPadding())
-                .then(
-                    // Push main-tab content (Home, etc.) below the app bar
-                    if (showBottomBar) Modifier.padding(top = 84.dp) else Modifier
-                ),
+                .then(Modifier.padding(top = 84.dp)),
         ) {
             composable(NavRoutes.Home) {
                 val scope = rememberCoroutineScope()
@@ -728,7 +727,6 @@ fun AppNavHostStateless(
                     onNavigateToLabelUpload = { navController.navigate(NavRoutes.LabelUpload) },
                     onNavigateToMealQa = { navController.navigate(NavRoutes.MealQa) },
                     onNavigateToRecipeCalculator = { navController.navigate(NavRoutes.RecipeCalculator) },
-                    onNavigateToCoach = { navController.navigate(NavRoutes.Coach) },
                     onNavigateToChat = { navController.navigate(NavRoutes.Chat) },
                     onNavigateToWeightTracker = { navController.navigate(NavRoutes.Progress) },
                     apiRemainingCalls = apiUsageManager.getRemainingCalls(),
@@ -858,19 +856,6 @@ fun AppNavHostStateless(
                     onClear = mainViewModel::clearRecipe,
                 )
             }
-            composable(NavRoutes.Coach) {
-                val coachViewModel: CoachViewModel = viewModel(factory = AppViewModelFactory(application))
-                val todayTip by coachViewModel.todayTip.collectAsState()
-                val weeklySummary by coachViewModel.weeklySummary.collectAsState()
-                val coachLoading by coachViewModel.loading.collectAsState()
-                CoachScreen(
-                    todayTip = todayTip,
-                    weeklySummary = weeklySummary,
-                    loading = coachLoading,
-                    onGetTip = coachViewModel::loadTodayTip,
-                    onGetSummary = coachViewModel::loadWeeklySummary,
-                )
-            }
             composable(NavRoutes.Chat) {
                 val chatViewModel: ChatViewModel = viewModel(factory = AppViewModelFactory(application))
                 val chatMessages by chatViewModel.messages.collectAsState()
@@ -879,6 +864,8 @@ fun AppNavHostStateless(
                     messages = chatMessages,
                     loading = chatLoading,
                     onSendMessage = chatViewModel::sendMessage,
+                    onGetTodayTip = chatViewModel::loadTodayTip,
+                    onGetWeeklySummary = chatViewModel::loadWeeklySummary,
                 )
             }
             composable(NavRoutes.RecipeCalculator) {

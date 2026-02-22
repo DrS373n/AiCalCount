@@ -113,4 +113,56 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    /** One-shot tip based on today's macros (Coach feature). Appends result as a bot message. */
+    fun loadTodayTip() {
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                val profile = profileRepo.profile.first()
+                val preferences = dietPrefsRepo.preferences.first()
+                val goals = DietGoalHelper.computeGoals(profile, preferences)
+                val protein = progressRepo.todayProtein.first()
+                val carbs = progressRepo.todayCarbs.first()
+                val fat = progressRepo.todayFat.first()
+                val prompt = """
+                    You are a friendly nutrition coach. In 1-2 short sentences only, give one practical tip.
+                    Today's macros so far: ${protein.toInt()}g protein, ${carbs.toInt()}g carbs, ${fat.toInt()}g fat.
+                    Typical goals: ${goals.proteinG.toInt()}g protein, ${goals.carbsG.toInt()}g carbs, ${goals.fatG.toInt()}g fat.
+                    No greeting, just the tip.
+                """.trimIndent()
+                val response = model.generateContent(prompt)
+                val tip = response.text?.trim() ?: "Track your meals to get a personalized tip."
+                _messages.value = _messages.value + ChatMessage(isUser = false, tip)
+            } catch (_: Exception) {
+                _messages.value = _messages.value + ChatMessage(isUser = false, "Track your meals to get a personalized tip.")
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+
+    /** One-shot weekly encouragement (Coach feature). Appends result as a bot message. */
+    fun loadWeeklySummary() {
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                val streak = progressRepo.streakCount.first()
+                val loggedDates = progressRepo.loggedDates.first()
+                val thisWeek = loggedDates.count { it >= java.time.LocalDate.now().minusDays(7).toString() }
+                val prompt = """
+                    You are a friendly nutrition coach. In one short sentence only, give encouragement.
+                    This week they logged meals on $thisWeek days. Current streak: $streak days.
+                    No greeting, just one encouraging sentence.
+                """.trimIndent()
+                val response = model.generateContent(prompt)
+                val summary = response.text?.trim() ?: "Keep logging to see your weekly summary."
+                _messages.value = _messages.value + ChatMessage(isUser = false, summary)
+            } catch (_: Exception) {
+                _messages.value = _messages.value + ChatMessage(isUser = false, "Keep logging to see your weekly summary.")
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
 }

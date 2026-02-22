@@ -40,6 +40,8 @@ fun ChatScreen(
     messages: List<ChatMessage>,
     loading: Boolean,
     onSendMessage: (String) -> Unit,
+    onGetTodayTip: () -> Unit = {},
+    onGetWeeklySummary: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var inputText by rememberSaveable { mutableStateOf("") }
@@ -69,6 +71,20 @@ fun ChatScreen(
                     selected = false,
                     onClick = { onSendMessage(label) },
                     label = { Text(label, maxLines = 1) },
+                )
+            }
+            item {
+                FilterChip(
+                    selected = false,
+                    onClick = onGetTodayTip,
+                    label = { Text(stringResource(R.string.coach_get_tip), maxLines = 1) },
+                )
+            }
+            item {
+                FilterChip(
+                    selected = false,
+                    onClick = onGetWeeklySummary,
+                    label = { Text(stringResource(R.string.coach_get_summary), maxLines = 1) },
                 )
             }
         }

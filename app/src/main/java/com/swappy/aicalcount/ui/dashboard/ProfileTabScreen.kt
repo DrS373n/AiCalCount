@@ -46,7 +46,6 @@ fun ProfileTabScreen(
     onNavigateToLabelUpload: () -> Unit,
     onNavigateToMealQa: () -> Unit,
     onNavigateToRecipeCalculator: () -> Unit = {},
-    onNavigateToCoach: () -> Unit = {},
     onNavigateToChat: () -> Unit = {},
     onNavigateToWeightTracker: () -> Unit = {},
     apiRemainingCalls: Int? = null,
@@ -139,9 +138,7 @@ fun ProfileTabScreen(
         Spacer(modifier = Modifier.height(8.dp))
         ProfileMenuItem(stringResource(R.string.more_foods_recipes), onNavigateToRecipeCalculator)
         Spacer(modifier = Modifier.height(8.dp))
-        ProfileMenuItem(stringResource(R.string.coach_menu), onNavigateToCoach)
-        Spacer(modifier = Modifier.height(8.dp))
-        ProfileMenuItem(stringResource(R.string.more_chat), onNavigateToChat)
+        ProfileMenuItem(stringResource(R.string.coach_menu), onNavigateToChat)
         Spacer(modifier = Modifier.height(8.dp))
         ProfileMenuItem("Compare progress photos", onNavigateToCompare)
         Spacer(modifier = Modifier.height(8.dp))
@@ -191,7 +188,6 @@ fun ProfileTabScreenPreview() {
             onNavigateToLabelUpload = {},
             onNavigateToMealQa = {},
             onNavigateToRecipeCalculator = {},
-            onNavigateToCoach = {},
             onNavigateToChat = {},
             onNavigateToWeightTracker = {},
         )

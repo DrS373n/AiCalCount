@@ -15,6 +15,5 @@ object NavRoutes {
     const val NutritionDetail = "nutrition_detail"
     const val Compare = "compare"
     const val RecipeCalculator = "recipe_calculator"
-    const val Coach = "coach"
     const val Chat = "chat"
 }

@@ -7,7 +7,6 @@ import com.swappy.aicalcount.data.meals.MealDiaryRepository
 import com.swappy.aicalcount.data.onboarding.OnboardingRepository
 import com.swappy.aicalcount.data.progress.ProgressRepository
 import com.swappy.aicalcount.ui.chat.ChatViewModel
-import com.swappy.aicalcount.ui.coach.CoachViewModel
 
 class AppViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     private val onboardingRepository = OnboardingRepository(application)
@@ -20,7 +19,6 @@ class AppViewModelFactory(private val application: Application) : ViewModelProvi
             modelClass.isAssignableFrom(MainViewModel::class.java) -> MainViewModel(application, onboardingRepository, progressRepository, mealDiaryRepository) as T
             modelClass.isAssignableFrom(MealQaViewModel::class.java) -> MealQaViewModel(application) as T
             modelClass.isAssignableFrom(DietPlanViewModel::class.java) -> DietPlanViewModel(application) as T
-            modelClass.isAssignableFrom(CoachViewModel::class.java) -> CoachViewModel(application) as T
             modelClass.isAssignableFrom(ChatViewModel::class.java) -> ChatViewModel(application) as T
             else -> throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")
         }
