@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Fork & knife / restaurant style icon -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M11,9H9V2H7v7H5V2H3v7c0,2.12 1.66,3.84 4,4.24V22h2v-8.76c2.34,-0.4 4,-2.12 4,-4.24V2h-2V9z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M16,6v2h4l-4,8h2v2h4v-2h-2L16,6z" />
+</vector>

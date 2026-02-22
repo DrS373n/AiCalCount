@@ -25,6 +25,9 @@ private val KEY_TODAY_MACROS_DATE = stringPreferencesKey("today_macros_date")
 private val KEY_TODAY_PROTEIN = floatPreferencesKey("today_protein")
 private val KEY_TODAY_CARBS = floatPreferencesKey("today_carbs")
 private val KEY_TODAY_FAT = floatPreferencesKey("today_fat")
+private val KEY_TODAY_FIBER = floatPreferencesKey("today_fiber")
+private val KEY_TODAY_SUGAR = floatPreferencesKey("today_sugar")
+private val KEY_TODAY_SODIUM = floatPreferencesKey("today_sodium")
 private val KEY_HYDRATION_DATE = stringPreferencesKey("hydration_date")
 private val KEY_HYDRATION_GLASSES = intPreferencesKey("hydration_glasses")
 private val KEY_HYDRATION_GOAL_GLASSES = intPreferencesKey("hydration_goal_glasses")
@@ -69,6 +72,15 @@ class ProgressRepository(private val context: Context) {
     val todayFat: Flow<Float> = context.progressDataStore.data.map { prefs ->
         if (prefs[KEY_TODAY_MACROS_DATE] == LocalDate.now().toString()) prefs[KEY_TODAY_FAT] ?: 0f else 0f
     }
+    val todayFiber: Flow<Float> = context.progressDataStore.data.map { prefs ->
+        if (prefs[KEY_TODAY_MACROS_DATE] == LocalDate.now().toString()) prefs[KEY_TODAY_FIBER] ?: 0f else 0f
+    }
+    val todaySugar: Flow<Float> = context.progressDataStore.data.map { prefs ->
+        if (prefs[KEY_TODAY_MACROS_DATE] == LocalDate.now().toString()) prefs[KEY_TODAY_SUGAR] ?: 0f else 0f
+    }
+    val todaySodium: Flow<Float> = context.progressDataStore.data.map { prefs ->
+        if (prefs[KEY_TODAY_MACROS_DATE] == LocalDate.now().toString()) prefs[KEY_TODAY_SODIUM] ?: 0f else 0f
+    }
 
     /** Today's hydration: glasses of water. Reset each day. Default goal 8. */
     val hydrationGlasses: Flow<Int> = context.progressDataStore.data.map { prefs ->
@@ -78,8 +90,15 @@ class ProgressRepository(private val context: Context) {
         prefs[KEY_HYDRATION_GOAL_GLASSES] ?: 8
     }
 
-    /** Add a meal's macros to today's totals. Resets to this meal if it's a new day. */
-    suspend fun addMealMacros(proteinG: Float, carbsG: Float, fatG: Float) {
+    /** Add a meal's macros and optional nutrients to today's totals. Resets to this meal if it's a new day. */
+    suspend fun addMealMacros(
+        proteinG: Float,
+        carbsG: Float,
+        fatG: Float,
+        fiberG: Float = 0f,
+        sugarG: Float = 0f,
+        sodiumMg: Float = 0f,
+    ) {
         val todayStr = LocalDate.now().toString()
         context.progressDataStore.edit { prefs ->
             val storedDate = prefs[KEY_TODAY_MACROS_DATE]
@@ -87,11 +106,17 @@ class ProgressRepository(private val context: Context) {
                 prefs[KEY_TODAY_PROTEIN] = (prefs[KEY_TODAY_PROTEIN] ?: 0f) + proteinG
                 prefs[KEY_TODAY_CARBS] = (prefs[KEY_TODAY_CARBS] ?: 0f) + carbsG
                 prefs[KEY_TODAY_FAT] = (prefs[KEY_TODAY_FAT] ?: 0f) + fatG
+                prefs[KEY_TODAY_FIBER] = (prefs[KEY_TODAY_FIBER] ?: 0f) + fiberG
+                prefs[KEY_TODAY_SUGAR] = (prefs[KEY_TODAY_SUGAR] ?: 0f) + sugarG
+                prefs[KEY_TODAY_SODIUM] = (prefs[KEY_TODAY_SODIUM] ?: 0f) + sodiumMg
             } else {
                 prefs[KEY_TODAY_MACROS_DATE] = todayStr
                 prefs[KEY_TODAY_PROTEIN] = proteinG
                 prefs[KEY_TODAY_CARBS] = carbsG
                 prefs[KEY_TODAY_FAT] = fatG
+                prefs[KEY_TODAY_FIBER] = fiberG
+                prefs[KEY_TODAY_SUGAR] = sugarG
+                prefs[KEY_TODAY_SODIUM] = sodiumMg
             }
         }
     }

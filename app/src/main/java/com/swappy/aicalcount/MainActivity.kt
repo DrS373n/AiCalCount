@@ -11,9 +11,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -132,11 +135,21 @@ private fun HomeRoute(
     val todayProtein by progressRepo.todayProtein.collectAsState(initial = 0f)
     val todayCarbs by progressRepo.todayCarbs.collectAsState(initial = 0f)
     val todayFat by progressRepo.todayFat.collectAsState(initial = 0f)
+    val todayFiber by progressRepo.todayFiber.collectAsState(initial = 0f)
+    val todaySugar by progressRepo.todaySugar.collectAsState(initial = 0f)
+    val todaySodium by progressRepo.todaySodium.collectAsState(initial = 0f)
     val hydrationGlasses by progressRepo.hydrationGlasses.collectAsState(initial = 0)
     val hydrationGoalGlasses by progressRepo.hydrationGoalGlasses.collectAsState(initial = 8)
     val streakCount by progressRepo.streakCount.collectAsState(initial = 0)
+    val loggedDates by progressRepo.loggedDates.collectAsState(initial = emptySet())
     val preferences by dietPrefsRepo.preferences.collectAsState(initial = DietPreferences())
     val goals = remember(preferences) { com.swappy.aicalcount.data.diet.DietGoalHelper.computeGoals(preferences) }
+    val todayCalories = todayProtein * 4f + todayCarbs * 4f + todayFat * 9f
+    val todayGoalMet = goals.calories > 0f && todayCalories >= goals.calories
+    val todayStr = java.time.LocalDate.now().toString()
+    val datesWithGoalsMet = remember(loggedDates, todayGoalMet, todayStr) {
+        if (todayGoalMet) loggedDates + todayStr else loggedDates
+    }
     HomeTabScreen(
         isNewUser = !hasLoggedMeal,
         todayProtein = todayProtein,
@@ -146,9 +159,16 @@ private fun HomeRoute(
         goalProtein = goals.proteinG,
         goalCarbs = goals.carbsG,
         goalFat = goals.fatG,
+        todayFiber = todayFiber,
+        todaySugar = todaySugar,
+        todaySodium = todaySodium,
+        goalFiber = 25f,
+        goalSugar = 50f,
+        goalSodium = 2300f,
         hydrationGlasses = hydrationGlasses,
         hydrationGoalGlasses = hydrationGoalGlasses,
         streakCount = streakCount,
+        datesWithGoalsMet = datesWithGoalsMet,
         onAddHydration = onAddHydration,
         onNavigateToScan = onNavigateToScan,
         onNavigateToNutrition = onNavigateToNutrition,
@@ -163,6 +183,8 @@ private fun OnboardingGate() {
     val dietPrefsRepo = remember { DietPreferencesRepository(context) }
     val completed by repository.isOnboardingComplete.collectAsState(initial = false)
     val profileSetupComplete by repository.isProfileSetupComplete.collectAsState(initial = false)
+    val pendingDietSummary by repository.pendingDietSummary.collectAsState(initial = false)
+    val preferences by dietPrefsRepo.preferences.collectAsState(initial = DietPreferences())
     val scope = rememberCoroutineScope()
 
     when {
@@ -180,8 +202,21 @@ private fun OnboardingGate() {
                 }
             },
         )
+        !profileSetupComplete && pendingDietSummary -> DietPlanSummaryScreen(
+            preferences = preferences,
+            onStartOver = {
+                scope.launch {
+                    repository.setPendingDietSummary(false)
+                }
+            },
+            onNext = {
+                scope.launch {
+                    repository.setProfileSetupComplete()
+                }
+            },
+        )
         !profileSetupComplete -> ProfileSetupScreen(
-            onComplete = { displayName, weightKg, heightCm, age, preferences ->
+            onComplete = { displayName, weightKg, heightCm, age, preferences, photoPath ->
                 scope.launch {
                     profileRepo.save(
                         UserProfile(
@@ -189,10 +224,11 @@ private fun OnboardingGate() {
                             weightKg = weightKg,
                             heightCm = heightCm,
                             age = age,
+                            profilePhotoPath = photoPath,
                         ),
                     )
                     dietPrefsRepo.save(preferences)
-                    repository.setProfileSetupComplete()
+                    repository.setPendingDietSummary(true)
                 }
             },
         )
@@ -321,21 +357,7 @@ fun AppNavHostStateless(
 
     Scaffold(
         modifier = modifier,
-        topBar = {
-            if (showBack) {
-                TopAppBar(
-                    title = { },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.back)
-                            )
-                        }
-                    },
-                )
-            }
-        },
+        topBar = { },
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar(tonalElevation = 8.dp) {
@@ -465,9 +487,10 @@ fun AppNavHostStateless(
             startDestination = NavRoutes.Home,
             modifier = Modifier
                 .padding(topPadding)
+                .then(Modifier.statusBarsPadding())
                 .then(
-                    // When there's no TopAppBar (Home), reserve space for status bar so content isn't clipped
-                    if (!showBack) Modifier.statusBarsPadding() else Modifier
+                    // Push main-tab content (Home, etc.) below the app bar
+                    if (showBottomBar) Modifier.padding(top = 84.dp) else Modifier
                 ),
         ) {
             composable(NavRoutes.Home) {
@@ -811,6 +834,12 @@ fun AppNavHostStateless(
                     DietPlanSummaryScreen(
                         preferences = preferences,
                         onStartOver = { dietViewModel.resetPlanView() },
+                        onNext = {
+                            navController.navigate(NavRoutes.Home) {
+                                popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
                     )
                 } else {
                     DietPlanScreen(
@@ -841,6 +870,7 @@ fun AppNavHostStateless(
 fun DietPlanSummaryScreen(
     preferences: DietPreferences,
     onStartOver: () -> Unit,
+    onNext: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -861,9 +891,31 @@ fun DietPlanSummaryScreen(
             modifier = Modifier.padding(top = 16.dp),
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onStartOver) {
+        Button(
+            onClick = onStartOver,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Text(stringResource(R.string.diet_start_over))
         }
+        Text(
+            text = stringResource(R.string.diet_summary_start_over_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onNext,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.diet_summary_next))
+        }
+        Text(
+            text = stringResource(R.string.diet_summary_next_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 
@@ -877,7 +929,8 @@ fun DietPlanSummaryScreenPreview() {
                 activityLevel = ActivityLevel.Medium,
                 restrictions = emptyList()
             ),
-            onStartOver = {}
+            onStartOver = {},
+            onNext = {},
         )
     }
 }

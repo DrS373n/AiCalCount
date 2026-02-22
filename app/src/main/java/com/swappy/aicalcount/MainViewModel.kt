@@ -217,8 +217,11 @@ class MainViewModel(
         val protein = findAmount(listOf("Protein"))
         val carbs = findAmount(listOf("Carbohydrates", "Carbs"))
         val fat = findAmount(listOf("Fat"))
+        val fiber = findAmount(listOf("Fiber"))
+        val sugar = findAmount(listOf("Sugar"))
+        val sodium = findAmount(listOf("Sodium"))
         if (protein > 0f || carbs > 0f || fat > 0f) {
-            progressRepository.addMealMacros(protein, carbs, fat)
+            progressRepository.addMealMacros(protein, carbs, fat, fiber, sugar, sodium)
             _snackbarMessageKey.value = "added_to_day"
         }
     }
@@ -229,11 +232,15 @@ class MainViewModel(
         val nutrients = recipe.recipes.firstOrNull()?.nutrition?.nutrients ?: return
         fun findAmount(nameVariants: List<String>): Float =
             nutrients.firstOrNull { n -> nameVariants.any { n.name.equals(it, ignoreCase = true) } }?.amount?.toFloat() ?: 0f
-        val protein = findAmount(listOf("Protein")) / servings
-        val carbs = findAmount(listOf("Carbohydrates", "Carbs")) / servings
-        val fat = findAmount(listOf("Fat")) / servings
+        val div = servings.toFloat()
+        val protein = findAmount(listOf("Protein")) / div
+        val carbs = findAmount(listOf("Carbohydrates", "Carbs")) / div
+        val fat = findAmount(listOf("Fat")) / div
+        val fiber = findAmount(listOf("Fiber")) / div
+        val sugar = findAmount(listOf("Sugar")) / div
+        val sodium = findAmount(listOf("Sodium")) / div
         if (protein > 0f || carbs > 0f || fat > 0f) {
-            progressRepository.addMealMacros(protein, carbs, fat)
+            progressRepository.addMealMacros(protein, carbs, fat, fiber, sugar, sodium)
             _snackbarMessageKey.value = "added_to_day"
         }
     }

@@ -17,6 +17,7 @@ private val Context.onboardingDataStore: DataStore<Preferences> by preferencesDa
 private val KEY_ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
 private val KEY_HAS_LOGGED_MEAL = booleanPreferencesKey("has_logged_meal")
 private val KEY_PROFILE_SETUP_COMPLETE = booleanPreferencesKey("profile_setup_complete")
+private val KEY_PENDING_DIET_SUMMARY = booleanPreferencesKey("pending_diet_summary")
 private val KEY_HAS_SEEN_FAB_TOOLTIP = booleanPreferencesKey("has_seen_fab_tooltip")
 
 class OnboardingRepository(private val context: Context) {
@@ -33,6 +34,11 @@ class OnboardingRepository(private val context: Context) {
     /** True once the user has completed the post-onboarding profile setup. */
     val isProfileSetupComplete: Flow<Boolean> = context.onboardingDataStore.data.map { prefs ->
         prefs[KEY_PROFILE_SETUP_COMPLETE] ?: false
+    }
+
+    /** True after profile form is submitted and before user dismisses the diet plan summary screen. */
+    val pendingDietSummary: Flow<Boolean> = context.onboardingDataStore.data.map { prefs ->
+        prefs[KEY_PENDING_DIET_SUMMARY] ?: false
     }
 
     suspend fun setOnboardingComplete() {
@@ -57,6 +63,13 @@ class OnboardingRepository(private val context: Context) {
     suspend fun setProfileSetupComplete() {
         context.onboardingDataStore.edit { prefs ->
             prefs[KEY_PROFILE_SETUP_COMPLETE] = true
+            prefs[KEY_PENDING_DIET_SUMMARY] = false
+        }
+    }
+
+    suspend fun setPendingDietSummary(value: Boolean) {
+        context.onboardingDataStore.edit { prefs ->
+            prefs[KEY_PENDING_DIET_SUMMARY] = value
         }
     }
 

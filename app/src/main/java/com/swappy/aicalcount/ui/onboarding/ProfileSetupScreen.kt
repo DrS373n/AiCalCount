@@ -1,5 +1,9 @@
 package com.swappy.aicalcount.ui.onboarding
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,45 +11,62 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import coil.compose.AsyncImage
 import com.swappy.aicalcount.R
 import com.swappy.aicalcount.data.diet.ActivityLevel
 import com.swappy.aicalcount.data.diet.DietGoal
 import com.swappy.aicalcount.data.diet.DietPreferences
 import com.swappy.aicalcount.data.diet.DietRestriction
+import com.swappy.aicalcount.data.profile.UserProfileRepository
 import androidx.compose.ui.tooling.preview.Preview
 import com.swappy.aicalcount.ui.theme.AiCalCountTheme
+import kotlinx.coroutines.launch
 
-private const val STEP_NAME = 0
-private const val STEP_WEIGHT_HEIGHT_AGE = 1
-private const val STEP_GOAL = 2
-private const val STEP_ACTIVITY = 3
-private const val STEP_RESTRICTIONS = 4
-private const val TOTAL_STEPS = 5
+private const val STEP_PHOTO = 0
+private const val STEP_NAME = 1
+private const val STEP_WEIGHT_HEIGHT_AGE = 2
+private const val STEP_GOAL = 3
+private const val STEP_ACTIVITY = 4
+private const val STEP_RESTRICTIONS = 5
+private const val TOTAL_STEPS = 6
 
 @Composable
 fun ProfileSetupScreen(
-    onComplete: (displayName: String, weightKg: Float, heightCm: Float, age: Int, preferences: DietPreferences) -> Unit,
+    onComplete: (displayName: String, weightKg: Float, heightCm: Float, age: Int, preferences: DietPreferences, profilePhotoPath: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var step by remember { mutableStateOf(0) }
+    var profilePhotoPath by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
     var weightText by remember { mutableStateOf("") }
     var heightText by remember { mutableStateOf("") }
@@ -54,6 +75,36 @@ fun ProfileSetupScreen(
     var activityLevel by remember { mutableStateOf(ActivityLevel.Medium) }
     var restrictions by remember { mutableStateOf(setOf<DietRestriction>()) }
 
+    val ctx = LocalContext.current
+    val appContext = ctx.applicationContext
+    val profileRepo = remember(appContext) { UserProfileRepository(appContext) }
+    val scope = rememberCoroutineScope()
+
+    val takeProfilePicture = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview(),
+    ) { bmp ->
+        bmp?.let { bitmap ->
+            scope.launch {
+                val path = profileRepo.saveProfilePhoto(bitmap)
+                profilePhotoPath = path
+            }
+        }
+    }
+    val requestCameraPermission = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) takeProfilePicture.launch(null)
+    }
+    val pickProfileImage = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        uri?.let { u ->
+            profileRepo.saveProfilePhotoFromUri(u)?.let { path ->
+                profilePhotoPath = path
+            }
+        }
+    }
+
     val scroll = rememberScrollState()
     Column(
         modifier = modifier
@@ -61,19 +112,93 @@ fun ProfileSetupScreen(
             .verticalScroll(scroll)
             .padding(24.dp)
     ) {
+        if (step == STEP_PHOTO) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = { step++ }) {
+                    Text(stringResource(R.string.profile_photo_skip))
+                }
+            }
+        }
+
         Text(
             text = stringResource(R.string.profile_setup_title),
             style = MaterialTheme.typography.headlineMedium
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.profile_setup_subtitle),
+            text = when (step) {
+                STEP_PHOTO -> stringResource(R.string.profile_setup_photo_subtitle)
+                else -> stringResource(R.string.profile_setup_subtitle)
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(24.dp))
 
         when (step) {
+            STEP_PHOTO -> {
+                Text(
+                    text = stringResource(R.string.profile_setup_photo_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                if (profilePhotoPath.isNotEmpty()) {
+                    AsyncImage(
+                        model = profilePhotoPath,
+                        contentDescription = stringResource(R.string.profile_photo_desc),
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Card(
+                        onClick = {
+                            if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                takeProfilePicture.launch(null)
+                            } else {
+                                requestCameraPermission.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(32.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(stringResource(R.string.profile_photo_selfie), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    Card(
+                        onClick = {
+                            pickProfileImage.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Outlined.PhotoLibrary, contentDescription = null, modifier = Modifier.size(32.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(stringResource(R.string.profile_photo_gallery), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
             STEP_NAME -> {
                 OutlinedTextField(
                     value = displayName,
@@ -186,7 +311,8 @@ fun ProfileSetupScreen(
                                 goal = goal,
                                 activityLevel = activityLevel,
                                 restrictions = restrictions.filter { it != DietRestriction.None }
-                            )
+                            ),
+                            profilePhotoPath
                         )
                     }
                 }
@@ -231,6 +357,6 @@ private fun ProfileSetupRadioRow(
 @Composable
 fun ProfileSetupScreenPreview() {
     AiCalCountTheme {
-        ProfileSetupScreen(onComplete = { _, _, _, _, _ -> })
+        ProfileSetupScreen(onComplete = { _, _, _, _, _, _ -> })
     }
 }

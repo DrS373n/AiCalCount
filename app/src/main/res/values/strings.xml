@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">NomNom</string>
-    <string name="app_tagline">AI Calorie Counter App</string>
+    <string name="app_tagline_subtitle">Your Personal Nutrition Expert</string>
+    <string name="app_name_with_tagline">NomNom\nYour Personal Nutrition Expert</string>
 
     <!-- Home -->
     <string name="home_title">NomNom</string>
@@ -55,6 +56,9 @@
     <string name="diet_plan_ready">Your plan is ready</string>
     <string name="diet_plan_summary">Based on your answers, here’s a summary of your diet plan.</string>
     <string name="diet_start_over">Start over</string>
+    <string name="diet_summary_start_over_desc">This starts the profile setup all over again.</string>
+    <string name="diet_summary_next">Next</string>
+    <string name="diet_summary_next_desc">This completes the profile setup and brings you to the Home screen.</string>
 
     <!-- Common -->
     <string name="back">Back</string>
@@ -97,6 +101,9 @@
     <!-- Profile setup (post-onboarding) -->
     <string name="profile_setup_title">Set up your profile</string>
     <string name="profile_setup_subtitle">A few details help us personalize your experience.</string>
+    <string name="profile_setup_photo_title">Add your photo</string>
+    <string name="profile_setup_photo_subtitle">Upload a photo or take one. This will show on your profile.</string>
+    <string name="profile_photo_skip">Skip</string>
     <string name="profile_name">Your name</string>
     <string name="profile_name_hint">Enter your name</string>
     <string name="profile_weight">Weight (kg)</string>
@@ -160,4 +167,5 @@
     <string name="coach_weekly_summary">How did I do this week?</string>
     <string name="coach_get_tip">Get tip</string>
     <string name="coach_get_summary">Get summary</string>
+
 </resources>
