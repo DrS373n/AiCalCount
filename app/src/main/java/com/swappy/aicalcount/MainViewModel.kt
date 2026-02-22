@@ -14,10 +14,13 @@ import com.swappy.aicalcount.network.RetrofitClient
 import com.swappy.aicalcount.network.toRecipe
 import com.swappy.aicalcount.util.ApiUsageManager
 import com.swappy.aicalcount.util.AppError
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -63,15 +66,23 @@ class MainViewModel(
             _appError.value = null
             try {
                 val stream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
-                val requestBody = stream.toByteArray().toRequestBody("image/jpeg".toMediaTypeOrNull())
-                val response = RetrofitClient.spoonacularService.analyzeImage(requestBody, apiKey)
-                _bitmap.value = bitmap
-                _recipe.value = response
+                if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)) {
+                    _appError.value = AppError.Unknown(detail = "Could not encode image")
+                    return@launch
+                }
+                val body = stream.toByteArray().toRequestBody("image/jpeg".toMediaTypeOrNull())
+                val filePart = MultipartBody.Part.createFormData("file", "image.jpg", body)
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.spoonacularService.analyzeImage(filePart, apiKey)
+                }
+                val recipe = response.toRecipe()
+                // Store a copy so we own the pixels; original may be recycled by caller
+                _bitmap.value = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) ?: bitmap
+                _recipe.value = recipe
                 apiUsageManager.recordApiCall()
                 onboardingRepository.setHasLoggedMeal()
                 progressRepository.recordMealLogged()
-                extractAndAddMacros(response)
+                extractAndAddMacros(recipe)
             } catch (e: IOException) {
                 _appError.value = AppError.Network(detail = e.message)
             } catch (e: retrofit2.HttpException) {
@@ -79,8 +90,8 @@ class MainViewModel(
                     429 -> AppError.ApiLimit()
                     else -> AppError.Server(detail = e.message())
                 }
-            } catch (e: Exception) {
-                _appError.value = AppError.Unknown(detail = e.message)
+            } catch (e: Throwable) {
+                _appError.value = AppError.Unknown(detail = e.message ?: e.javaClass.simpleName)
             } finally {
                 _loading.value = false
             }
@@ -138,8 +149,14 @@ class MainViewModel(
     }
 
     fun setBitmapAndAnalyze(bitmap: Bitmap?, apiKey: String) {
-        _bitmap.value = bitmap
+        // Store a copy so we own the pixels; original may be recycled by activity/picker
+        _bitmap.value = bitmap?.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) ?: bitmap
         bitmap?.let { analyzeImage(it, apiKey) }
+    }
+
+    /** Re-send current bitmap to Spoonacular (e.g. after an error). */
+    fun retryAnalyze(apiKey: String) {
+        _bitmap.value?.let { analyzeImage(it, apiKey) }
     }
 
     fun lookupBarcode(upc: String, apiKey: String) {
@@ -223,6 +240,69 @@ class MainViewModel(
         if (protein > 0f || carbs > 0f || fat > 0f) {
             progressRepository.addMealMacros(protein, carbs, fat, fiber, sugar, sodium)
             _snackbarMessageKey.value = "added_to_day"
+        }
+    }
+
+    /** Subtract a recipe's macros from today's totals (e.g. before replacing with corrected identification). */
+    private suspend fun subtractMacros(recipe: Recipe?) {
+        recipe ?: return
+        val nutrients = recipe.recipes.firstOrNull()?.nutrition?.nutrients ?: return
+        fun findAmount(nameVariants: List<String>): Float =
+            nutrients.firstOrNull { n -> nameVariants.any { n.name.equals(it, ignoreCase = true) } }?.amount?.toFloat() ?: 0f
+        val protein = findAmount(listOf("Protein"))
+        val carbs = findAmount(listOf("Carbohydrates", "Carbs"))
+        val fat = findAmount(listOf("Fat"))
+        val fiber = findAmount(listOf("Fiber"))
+        val sugar = findAmount(listOf("Sugar"))
+        val sodium = findAmount(listOf("Sodium"))
+        if (protein > 0f || carbs > 0f || fat > 0f) {
+            progressRepository.addMealMacros(-protein, -carbs, -fat, -fiber, -sugar, -sodium)
+        }
+    }
+
+    /** Correct a wrong identification: subtract current recipe macros, then look up corrected text and add new macros. */
+    fun correctIdentification(correctedText: String, apiKey: String) {
+        val trimmed = correctedText.trim()
+        if (trimmed.isBlank()) {
+            _appError.value = AppError.InvalidInput(detail = "Please enter what this food is.")
+            return
+        }
+        if (!apiUsageManager.canMakeApiCall()) {
+            _showApiLimitNotification.value = true
+            return
+        }
+        viewModelScope.launch {
+            _loading.value = true
+            _appError.value = null
+            try {
+                subtractMacros(_recipe.value)
+                val response = RetrofitClient.spoonacularService.searchRecipesWithNutrition(
+                    apiKey = apiKey,
+                    query = trimmed,
+                    number = 1,
+                    addRecipeNutrition = true
+                )
+                val recipe = response.toRecipe()
+                _recipe.value = recipe
+                if (recipe == null) {
+                    _appError.value = AppError.InvalidInput(detail = "No nutrition data found for that. Try a different description.")
+                } else {
+                    apiUsageManager.recordApiCall()
+                    extractAndAddMacros(recipe)
+                    _snackbarMessageKey.value = "added_to_day"
+                }
+            } catch (e: IOException) {
+                _appError.value = AppError.Network(detail = e.message)
+            } catch (e: retrofit2.HttpException) {
+                _appError.value = when (e.code()) {
+                    429 -> AppError.ApiLimit()
+                    else -> AppError.Server(detail = e.message())
+                }
+            } catch (e: Exception) {
+                _appError.value = AppError.Unknown(detail = e.message)
+            } finally {
+                _loading.value = false
+            }
         }
     }
 

@@ -3,6 +3,18 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val versionFile = file("version.properties")
+var versionCodeNum = 1
+var versionNameStr = "1.0.0"
+if (versionFile.exists()) {
+    versionFile.forEachLine { line ->
+        when {
+            line.startsWith("versionCode=") -> versionCodeNum = line.substringAfter("=").trim().toIntOrNull() ?: 1
+            line.startsWith("versionName=") -> versionNameStr = line.substringAfter("=").trim()
+        }
+    }
+}
+
 android {
     namespace = "com.swappy.aicalcount"
     compileSdk = 36
@@ -11,8 +23,8 @@ android {
         applicationId = "com.swappy.aicalcount"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = versionCodeNum
+        versionName = versionNameStr
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GEMINI_API_KEY", "\"YOUR_API_KEY\"")
@@ -66,6 +78,22 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
+// Bump version after successful build (patch: 1.0.0 -> 1.0.1)
+tasks.register("bumpVersion") {
+    group = "versioning"
+    description = "Increments versionCode and versionName (patch) in version.properties"
+    doLast {
+        val code = versionCodeNum + 1
+        val parts = versionNameStr.split(".")
+        val major = parts.getOrNull(0)?.toIntOrNull() ?: 1
+        val minor = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        val patch = (parts.getOrNull(2)?.toIntOrNull() ?: 0) + 1
+        val newName = "$major.$minor.$patch"
+        versionFile.writeText("versionCode=$code\nversionName=$newName\n")
+        logger.lifecycle("Version bumped to $newName ($code)")
+    }
+}
+
 // Task to launch the app on the connected device (run after install)
 tasks.register<Exec>("launchApp") {
     group = "install"
@@ -82,6 +110,7 @@ afterEvaluate {
     tasks.named("deploy").configure {
         dependsOn("installDebug")
     }
+    tasks.findByName("assembleDebug")?.finalizedBy("bumpVersion")
 }
 
 // Run: ./gradlew deploy — builds, installs, and launches the app

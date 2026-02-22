@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -122,6 +123,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun HomeRoute(
+    lastUploadedRecipe: com.swappy.aicalcount.network.Recipe?,
+    lastUploadedImage: android.graphics.Bitmap?,
     onNavigateToScan: () -> Unit,
     onNavigateToNutrition: (String) -> Unit,
     onAddHydration: () -> Unit,
@@ -169,6 +172,8 @@ private fun HomeRoute(
         hydrationGoalGlasses = hydrationGoalGlasses,
         streakCount = streakCount,
         datesWithGoalsMet = datesWithGoalsMet,
+        lastUploadedRecipe = lastUploadedRecipe,
+        lastUploadedImage = lastUploadedImage,
         onAddHydration = onAddHydration,
         onNavigateToScan = onNavigateToScan,
         onNavigateToNutrition = onNavigateToNutrition,
@@ -215,23 +220,25 @@ private fun OnboardingGate() {
                 }
             },
         )
-        !profileSetupComplete -> ProfileSetupScreen(
-            onComplete = { displayName, weightKg, heightCm, age, preferences, photoPath ->
-                scope.launch {
-                    profileRepo.save(
-                        UserProfile(
-                            displayName = displayName,
-                            weightKg = weightKg,
-                            heightCm = heightCm,
-                            age = age,
-                            profilePhotoPath = photoPath,
-                        ),
-                    )
-                    dietPrefsRepo.save(preferences)
-                    repository.setPendingDietSummary(true)
-                }
-            },
-        )
+        !profileSetupComplete -> Box(modifier = Modifier.fillMaxSize().padding(top = 84.dp)) {
+            ProfileSetupScreen(
+                onComplete = { displayName, weightKg, heightCm, age, preferences, photoPath ->
+                    scope.launch {
+                        profileRepo.save(
+                            UserProfile(
+                                displayName = displayName,
+                                weightKg = weightKg,
+                                heightCm = heightCm,
+                                age = age,
+                                profilePhotoPath = photoPath,
+                            ),
+                        )
+                        dietPrefsRepo.save(preferences)
+                        repository.setPendingDietSummary(true)
+                    }
+                },
+            )
+        }
         else -> Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             AppNavHost(modifier = Modifier.padding(innerPadding))
         }
@@ -499,6 +506,8 @@ fun AppNavHostStateless(
                 val onboardingRepo = remember(application) { OnboardingRepository(application) }
                 val progressRepo = remember(appContext) { ProgressRepository(appContext) }
                 val firstRunTooltipMessage = stringResource(R.string.first_run_fab_tooltip)
+                val lastUploadedRecipe by mainViewModel?.recipe?.collectAsState(initial = null) ?: remember { mutableStateOf<com.swappy.aicalcount.network.Recipe?>(null) }
+                val lastUploadedImage by mainViewModel?.bitmap?.collectAsState(initial = null) ?: remember { mutableStateOf<android.graphics.Bitmap?>(null) }
                 LaunchedEffect(Unit) {
                     if (!onboardingRepo.getHasSeenFabTooltip()) {
                         snackbarHostState.showSnackbar(
@@ -509,6 +518,8 @@ fun AppNavHostStateless(
                     }
                 }
                 HomeRoute(
+                    lastUploadedRecipe = lastUploadedRecipe,
+                    lastUploadedImage = lastUploadedImage,
                     onNavigateToScan = { navController.navigate(NavRoutes.Scan) },
                     onNavigateToNutrition = { navController.navigate(NavRoutes.NutritionDetail) },
                     onAddHydration = { scope.launch { progressRepo.addHydrationGlass() } },
@@ -672,6 +683,7 @@ fun AppNavHostStateless(
                 val bitmap by mainViewModel!!.bitmap.collectAsState()
                 val recipe by mainViewModel.recipe.collectAsState()
                 val loading by mainViewModel.loading.collectAsState()
+                val appError by mainViewModel.appError.collectAsState()
                 val takePicture = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.TakePicturePreview(),
                 ) { bmp ->
@@ -704,8 +716,11 @@ fun AppNavHostStateless(
                     recipe = recipe,
                     loading = loading,
                     isLabelMode = false,
+                    appError = appError,
                     onTakePhoto = onTakePhoto,
                     onPickImage = { pickImage.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onRetry = { mainViewModel.retryAnalyze(SPOONACULAR_API_KEY) },
+                    onCorrectIdentification = { mainViewModel.correctIdentification(it, SPOONACULAR_API_KEY) },
                     onClear = mainViewModel::clearRecipe,
                 )
             }
@@ -730,6 +745,7 @@ fun AppNavHostStateless(
                 val bitmap by mainViewModel!!.bitmap.collectAsState()
                 val recipe by mainViewModel.recipe.collectAsState()
                 val loading by mainViewModel.loading.collectAsState()
+                val appError by mainViewModel.appError.collectAsState()
                 val takePicture = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.TakePicturePreview(),
                 ) { bmp ->
@@ -762,8 +778,11 @@ fun AppNavHostStateless(
                     recipe = recipe,
                     loading = loading,
                     isLabelMode = true,
+                    appError = appError,
                     onTakePhoto = onTakePhoto,
                     onPickImage = { pickImage.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onRetry = { mainViewModel.retryAnalyze(SPOONACULAR_API_KEY) },
+                    onCorrectIdentification = { mainViewModel.correctIdentification(it, SPOONACULAR_API_KEY) },
                     onClear = mainViewModel::clearRecipe,
                 )
             }
@@ -940,6 +959,8 @@ fun DietPlanSummaryScreenPreview() {
 fun HomeRoutePreview() {
     AiCalCountTheme {
         HomeRoute(
+            lastUploadedRecipe = null,
+            lastUploadedImage = null,
             onNavigateToScan = {},
             onNavigateToNutrition = {},
             onAddHydration = {},

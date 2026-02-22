@@ -1,5 +1,6 @@
 package com.swappy.aicalcount.ui.dashboard
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -39,7 +42,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
 import com.swappy.aicalcount.R
+import com.swappy.aicalcount.network.Recipe
 import com.swappy.aicalcount.ui.theme.AiCalCountTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -65,6 +70,8 @@ fun HomeTabScreen(
     hydrationGoalGlasses: Int,
     streakCount: Int,
     datesWithGoalsMet: Set<String> = emptySet(),
+    lastUploadedRecipe: Recipe? = null,
+    lastUploadedImage: Bitmap? = null,
     onAddHydration: () -> Unit,
     onNavigateToScan: () -> Unit,
     onNavigateToNutrition: (String) -> Unit,
@@ -82,83 +89,104 @@ fun HomeTabScreen(
                 DateSelector(datesWithGoalsMet = datesWithGoalsMet)
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
-            item {
-                val todayCalories = todayProtein * 4f + todayCarbs * 4f + todayFat * 9f
-                CalorieSummaryCard(caloriesEaten = todayCalories, goalCalories = goalCalories)
-            }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-            item {
-                WaterCard(
-                    glasses = hydrationGlasses,
-                    goal = hydrationGoalGlasses,
-                    onAddHydration = onAddHydration,
-                )
-            }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    MacroCard(
-                        label = "Protein",
-                        current = todayProtein,
-                        goal = goalProtein,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MacroCard(
-                        label = "Carbs",
-                        current = todayCarbs,
-                        goal = goalCarbs,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MacroCard(
-                        label = "Fat",
-                        current = todayFat,
-                        goal = goalFat,
-                        modifier = Modifier.weight(1f)
+            if (isNewUser) {
+                item {
+                    NewUserEmptyState(
+                        onLogFirstMeal = onNavigateToScan,
                     )
                 }
-            }
-            item { Spacer(modifier = Modifier.height(12.dp)) }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    MiniMacroCard(
-                        label = "Fiber",
-                        current = todayFiber,
-                        goal = goalFiber,
-                        unit = "g",
-                        modifier = Modifier.weight(1f)
-                    )
-                    MiniMacroCard(
-                        label = "Sugar",
-                        current = todaySugar,
-                        goal = goalSugar,
-                        unit = "g",
-                        modifier = Modifier.weight(1f)
-                    )
-                    MiniMacroCard(
-                        label = "Sodium",
-                        current = todaySodium,
-                        goal = goalSodium,
-                        unit = "mg",
-                        modifier = Modifier.weight(1f)
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item {
+                    AddMealCard()
+                }
+            } else {
+                item {
+                    val todayCalories = todayProtein * 4f + todayCarbs * 4f + todayFat * 9f
+                    CalorieSummaryCard(caloriesEaten = todayCalories, goalCalories = goalCalories)
+                }
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item {
+                    WaterCard(
+                        glasses = hydrationGlasses,
+                        goal = hydrationGoalGlasses,
+                        onAddHydration = onAddHydration,
                     )
                 }
-            }
-            item { Spacer(modifier = Modifier.height(24.dp)) }
-            item {
-                Text(
-                    text = "Recently uploaded",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-            item {
-                AddMealCard()
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        MacroCard(
+                            label = "Protein",
+                            current = todayProtein,
+                            goal = goalProtein,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MacroCard(
+                            label = "Carbs",
+                            current = todayCarbs,
+                            goal = goalCarbs,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MacroCard(
+                            label = "Fat",
+                            current = todayFat,
+                            goal = goalFat,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        MiniMacroCard(
+                            label = "Fiber",
+                            current = todayFiber,
+                            goal = goalFiber,
+                            unit = "g",
+                            modifier = Modifier.weight(1f)
+                        )
+                        MiniMacroCard(
+                            label = "Sugar",
+                            current = todaySugar,
+                            goal = goalSugar,
+                            unit = "g",
+                            modifier = Modifier.weight(1f)
+                        )
+                        MiniMacroCard(
+                            label = "Sodium",
+                            current = todaySodium,
+                            goal = goalSodium,
+                            unit = "mg",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                item { Spacer(modifier = Modifier.height(24.dp)) }
+                item {
+                    Text(
+                        text = "Recently uploaded",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+                if (lastUploadedRecipe != null) {
+                    item {
+                        RecentlyUploadedCard(
+                            recipe = lastUploadedRecipe,
+                            image = lastUploadedImage,
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(12.dp)) }
+                }
+                item {
+                    AddMealCard()
+                }
             }
         }
     }
@@ -504,6 +532,81 @@ fun MiniMacroCard(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
+            )
+        }
+    }
+}
+
+@Composable
+fun NewUserEmptyState(onLogFirstMeal: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Welcome! 👋",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = "Log your first meal to unlock your daily summary, calories, and macros.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Button(
+                onClick = onLogFirstMeal,
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
+                Text("Log first meal")
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentlyUploadedCard(
+    recipe: Recipe,
+    image: Bitmap?,
+) {
+    val title = recipe.recipes.firstOrNull()?.title ?: "Meal"
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (image != null) {
+                val imageBitmap = runCatching { image.asImageBitmap() }.getOrNull()
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(MaterialTheme.shapes.medium),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
             )
         }
     }

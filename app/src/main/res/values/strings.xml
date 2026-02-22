@@ -24,6 +24,10 @@
     <string name="home_voice_meal">Describe with voice</string>
     <string name="snackbar_added_to_day">Added to today\'s totals</string>
     <string name="scan_analyzing">Analyzing…</string>
+    <string name="scan_correct_identification">Wrong identification? Correct it</string>
+    <string name="scan_correct_dialog_title">Correct identification</string>
+    <string name="scan_correct_dialog_hint">What is this food or drink?</string>
+    <string name="scan_correct_update">Update</string>
     <string name="label_upload_hint">Upload a photo of the product label to calculate nutrition</string>
 
     <!-- Q&A -->
