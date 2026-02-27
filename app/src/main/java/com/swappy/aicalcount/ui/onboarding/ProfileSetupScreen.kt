@@ -297,6 +297,7 @@ fun ProfileSetupScreen(
                 )
             }
             STEP_WEIGHT -> {
+                // Current weight
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -320,6 +321,45 @@ fun ProfileSetupScreen(
                     value = if (useWeightLb) weightKg * 2.20462f else weightKg,
                     onValueChange = { value -> weightKg = if (useWeightLb) value / 2.20462f else value },
                     valueRange = if (useWeightLb) WEIGHT_LB_MIN..WEIGHT_LB_MAX else WEIGHT_KG_MIN..WEIGHT_KG_MAX,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Target weight
+                Text(
+                    text = stringResource(
+                        R.string.profile_target_weight_current,
+                        weightKg.toInt(),
+                        stringResource(R.string.profile_weight_kg)
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    listOf(false to stringResource(R.string.profile_weight_kg), true to stringResource(R.string.profile_weight_lb)).forEach { (useLb, label) ->
+                        FilterChip(
+                            selected = useTargetWeightLb == useLb,
+                            onClick = { useTargetWeightLb = useLb },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = if (useTargetWeightLb) "${(goalWeightKg * 2.20462f).toInt()} ${stringResource(R.string.profile_weight_lb)}" else "${goalWeightKg.toInt()} ${stringResource(R.string.profile_weight_kg)}",
+                    style = MaterialTheme.typography.displayMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Slider(
+                    value = if (useTargetWeightLb) goalWeightKg * 2.20462f else goalWeightKg,
+                    onValueChange = { value -> goalWeightKg = if (useTargetWeightLb) value / 2.20462f else value },
+                    valueRange = if (useTargetWeightLb) WEIGHT_LB_MIN..WEIGHT_LB_MAX else WEIGHT_KG_MIN..WEIGHT_KG_MAX,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -358,58 +398,20 @@ fun ProfileSetupScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            STEP_TARGET_WEIGHT -> {
-                Text(
-                    text = stringResource(R.string.profile_target_weight_current, weightKg.toInt(), stringResource(R.string.profile_weight_kg)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    listOf(false to stringResource(R.string.profile_weight_kg), true to stringResource(R.string.profile_weight_lb)).forEach { (useLb, label) ->
-                        FilterChip(
-                            selected = useTargetWeightLb == useLb,
-                            onClick = { useTargetWeightLb = useLb },
-                            label = { Text(label) }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = if (useTargetWeightLb) "${(goalWeightKg * 2.20462f).toInt()} ${stringResource(R.string.profile_weight_lb)}" else "${goalWeightKg.toInt()} ${stringResource(R.string.profile_weight_kg)}",
-                    style = MaterialTheme.typography.displayMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Slider(
-                    value = if (useTargetWeightLb) goalWeightKg * 2.20462f else goalWeightKg,
-                    onValueChange = { value -> goalWeightKg = if (useTargetWeightLb) value / 2.20462f else value },
-                    valueRange = if (useTargetWeightLb) WEIGHT_LB_MIN..WEIGHT_LB_MAX else WEIGHT_KG_MIN..WEIGHT_KG_MAX,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
             STEP_BIRTHDATE -> {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
+                        .clickable { showBirthdatePicker = true }
                 ) {
                     OutlinedTextField(
                         value = selectedBirthdate?.format(birthdateFormatter) ?: "",
                         onValueChange = { },
-                        readOnly = true,
+                        enabled = false,
                         label = { Text(stringResource(R.string.profile_birthdate)) },
                         placeholder = { Text(stringResource(R.string.profile_birthdate_hint)) },
                         modifier = Modifier.fillMaxWidth()
-                    )
-                    // Overlay so tap opens date picker (readOnly TextField consumes clicks otherwise)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable { showBirthdatePicker = true }
                     )
                 }
             }
@@ -621,10 +623,10 @@ fun ProfileSetupScreen(
             ) {
                 Button(
                     onClick = {
-                        if (step == STEP_GOOD_NEWS) {
-                            step = STEP_LOADING
-                        } else {
-                            step++
+                        step = when (step) {
+                            STEP_GOOD_NEWS -> STEP_LOADING
+                            STEP_BIRTHDATE -> STEP_GOAL_PACE
+                            else -> step + 1
                         }
                     }
                 ) {
