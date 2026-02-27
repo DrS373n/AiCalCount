@@ -23,7 +23,11 @@ private val BrandPrimaryDark = Color(0xFFFFB74D)
 private val DarkColorScheme = darkColorScheme(
     primary = BrandPrimaryDark,
     secondary = PurpleGrey80,
-    tertiary = Pink80
+    tertiary = Pink80,
+    background = Color(0xFF121212),
+    surface = Color(0xFF121212),
+    onBackground = Color(0xFFFFFFFF),
+    onSurface = Color(0xFFFFFFFF)
 )
 
 private val LightColorScheme = lightColorScheme(

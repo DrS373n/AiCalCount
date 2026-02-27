@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +75,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 private const val STEP_PHOTO = 0
@@ -118,6 +120,7 @@ fun ProfileSetupScreen(
     var useHeightImperial by remember { mutableStateOf(false) }
     var goalWeightKg by remember { mutableStateOf(70f) }
     var useTargetWeightLb by remember { mutableStateOf(false) }
+    var editingTargetWeight by remember { mutableStateOf(false) }
     var goalPace by remember { mutableStateOf(GoalPace.Steadily) }
     var selectedBirthdate by remember { mutableStateOf<LocalDate?>(null) }
     var showBirthdatePicker by remember { mutableStateOf(false) }
@@ -156,7 +159,11 @@ fun ProfileSetupScreen(
     }
 
     val scroll = rememberScrollState()
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -177,7 +184,8 @@ fun ProfileSetupScreen(
 
         Text(
             text = stringResource(R.string.profile_setup_title),
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -187,7 +195,7 @@ fun ProfileSetupScreen(
                 else -> stringResource(R.string.profile_setup_subtitle)
             },
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -195,7 +203,8 @@ fun ProfileSetupScreen(
             STEP_PHOTO -> {
                 Text(
                     text = stringResource(R.string.profile_setup_photo_title),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 if (profilePhotoPath.isNotEmpty()) {
@@ -254,7 +263,8 @@ fun ProfileSetupScreen(
             STEP_SEX -> {
                 Text(
                     text = stringResource(R.string.profile_biological_sex_title),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
@@ -297,7 +307,26 @@ fun ProfileSetupScreen(
                 )
             }
             STEP_WEIGHT -> {
-                // Current weight
+                // Choose which weight you're editing
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    listOf(
+                        false to stringResource(R.string.profile_weight),
+                        true to stringResource(R.string.profile_weight_target)
+                    ).forEach { (isTarget, label) ->
+                        FilterChip(
+                            selected = editingTargetWeight == isTarget,
+                            onClick = { editingTargetWeight = isTarget },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Units for the active weight
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -305,61 +334,44 @@ fun ProfileSetupScreen(
                 ) {
                     listOf(false to stringResource(R.string.profile_weight_kg), true to stringResource(R.string.profile_weight_lb)).forEach { (useLb, label) ->
                         FilterChip(
-                            selected = useWeightLb == useLb,
-                            onClick = { useWeightLb = useLb },
+                            selected = if (editingTargetWeight) useTargetWeightLb == useLb else useWeightLb == useLb,
+                            onClick = {
+                                if (editingTargetWeight) useTargetWeightLb = useLb else useWeightLb = useLb
+                            },
                             label = { Text(label) }
                         )
                     }
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = if (useWeightLb) "${(weightKg * 2.20462f).toInt()} ${stringResource(R.string.profile_weight_lb)}" else "${weightKg.toInt()} ${stringResource(R.string.profile_weight_kg)}",
-                    style = MaterialTheme.typography.displayMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Slider(
-                    value = if (useWeightLb) weightKg * 2.20462f else weightKg,
-                    onValueChange = { value -> weightKg = if (useWeightLb) value / 2.20462f else value },
-                    valueRange = if (useWeightLb) WEIGHT_LB_MIN..WEIGHT_LB_MAX else WEIGHT_KG_MIN..WEIGHT_KG_MAX,
-                    modifier = Modifier.fillMaxWidth()
-                )
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Target weight
-                Text(
-                    text = stringResource(
-                        R.string.profile_target_weight_current,
-                        weightKg.toInt(),
-                        stringResource(R.string.profile_weight_kg)
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    listOf(false to stringResource(R.string.profile_weight_kg), true to stringResource(R.string.profile_weight_lb)).forEach { (useLb, label) ->
-                        FilterChip(
-                            selected = useTargetWeightLb == useLb,
-                            onClick = { useTargetWeightLb = useLb },
-                            label = { Text(label) }
-                        )
-                    }
+                // Single slider bound to either current or target weight
+                val useLb = if (editingTargetWeight) useTargetWeightLb else useWeightLb
+                val displayValue = if (editingTargetWeight) {
+                    if (useLb) goalWeightKg * 2.20462f else goalWeightKg
+                } else {
+                    if (useLb) weightKg * 2.20462f else weightKg
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+
                 Text(
-                    text = if (useTargetWeightLb) "${(goalWeightKg * 2.20462f).toInt()} ${stringResource(R.string.profile_weight_lb)}" else "${goalWeightKg.toInt()} ${stringResource(R.string.profile_weight_kg)}",
+                    text = if (useLb) {
+                        "${displayValue.toInt()} ${stringResource(R.string.profile_weight_lb)}"
+                    } else {
+                        "${displayValue.toInt()} ${stringResource(R.string.profile_weight_kg)}"
+                    },
                     style = MaterialTheme.typography.displayMedium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Slider(
-                    value = if (useTargetWeightLb) goalWeightKg * 2.20462f else goalWeightKg,
-                    onValueChange = { value -> goalWeightKg = if (useTargetWeightLb) value / 2.20462f else value },
-                    valueRange = if (useTargetWeightLb) WEIGHT_LB_MIN..WEIGHT_LB_MAX else WEIGHT_KG_MIN..WEIGHT_KG_MAX,
+                    value = displayValue,
+                    onValueChange = { value ->
+                        if (editingTargetWeight) {
+                            goalWeightKg = if (useLb) value / 2.20462f else value
+                        } else {
+                            weightKg = if (useLb) value / 2.20462f else value
+                        }
+                    },
+                    valueRange = if (useLb) WEIGHT_LB_MIN..WEIGHT_LB_MAX else WEIGHT_KG_MIN..WEIGHT_KG_MAX,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -418,7 +430,8 @@ fun ProfileSetupScreen(
             STEP_GOAL_PACE -> {
                 Text(
                     text = stringResource(R.string.goal_pace_title),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -451,7 +464,7 @@ fun ProfileSetupScreen(
                                             GoalPace.Quickly -> stringResource(R.string.goal_pace_quickly_desc)
                                         },
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -462,7 +475,8 @@ fun ProfileSetupScreen(
             STEP_GOAL -> {
                 Text(
                     stringResource(R.string.diet_goal),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 DietGoal.entries.forEach { g ->
                     ProfileSetupRadioRow(
@@ -479,7 +493,8 @@ fun ProfileSetupScreen(
             STEP_ACTIVITY -> {
                 Text(
                     stringResource(R.string.diet_activity),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -525,7 +540,7 @@ fun ProfileSetupScreen(
                                             ActivityLevel.HighlyActive -> stringResource(R.string.diet_activity_highly_active_desc)
                                         },
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -544,7 +559,8 @@ fun ProfileSetupScreen(
                 val targetDate = LocalDate.now().plusWeeks(weeksToGoal.toLong())
                 Text(
                     text = stringResource(R.string.good_news_title),
-                    style = MaterialTheme.typography.headlineSmall
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -555,7 +571,7 @@ fun ProfileSetupScreen(
                 Text(
                     text = stringResource(R.string.good_news_target_date, targetDate.format(birthdateFormatter)),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             STEP_LOADING -> {
@@ -593,7 +609,8 @@ fun ProfileSetupScreen(
             STEP_RESTRICTIONS -> {
                 Text(
                     stringResource(R.string.diet_restrictions),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 listOf(
                     DietRestriction.None to stringResource(R.string.diet_restrictions_none),
@@ -640,7 +657,10 @@ fun ProfileSetupScreen(
         }
         if (showBirthdatePicker) {
             val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = selectedBirthdate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+                initialSelectedDateMillis = selectedBirthdate
+                    ?.atStartOfDay(ZoneOffset.UTC)
+                    ?.toInstant()
+                    ?.toEpochMilli()
                     ?: System.currentTimeMillis(),
                 yearRange = (LocalDate.now().year - 120)..LocalDate.now().year
             )
@@ -650,8 +670,9 @@ fun ProfileSetupScreen(
                     TextButton(
                         onClick = {
                             datePickerState.selectedDateMillis?.let { millis ->
+                                // Interpret the picker timestamp at UTC midnight to avoid timezone off-by-one
                                 selectedBirthdate = Instant.ofEpochMilli(millis)
-                                    .atZone(ZoneId.systemDefault())
+                                    .atZone(ZoneOffset.UTC)
                                     .toLocalDate()
                             }
                             showBirthdatePicker = false
