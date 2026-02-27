@@ -5,9 +5,11 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -154,12 +156,13 @@ fun ProfileSetupScreen(
     }
 
     val scroll = rememberScrollState()
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(scroll)
-            .padding(24.dp)
-    ) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scroll)
+                .padding(24.dp)
+        ) {
         if (step == STEP_PHOTO) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -389,45 +392,25 @@ fun ProfileSetupScreen(
                 )
             }
             STEP_BIRTHDATE -> {
-                OutlinedTextField(
-                    value = selectedBirthdate?.format(birthdateFormatter) ?: "",
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.profile_birthdate)) },
-                    placeholder = { Text(stringResource(R.string.profile_birthdate_hint)) },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
-                        .clickable { showBirthdatePicker = true }
-                )
-                if (showBirthdatePicker) {
-                    val datePickerState = rememberDatePickerState(
-                        initialSelectedDateMillis = selectedBirthdate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
-                            ?: System.currentTimeMillis(),
-                        yearRange = (LocalDate.now().year - 120)..LocalDate.now().year
+                ) {
+                    OutlinedTextField(
+                        value = selectedBirthdate?.format(birthdateFormatter) ?: "",
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.profile_birthdate)) },
+                        placeholder = { Text(stringResource(R.string.profile_birthdate_hint)) },
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    DatePickerDialog(
-                        onDismissRequest = { showBirthdatePicker = false },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    datePickerState.selectedDateMillis?.let { millis ->
-                                        selectedBirthdate = Instant.ofEpochMilli(millis)
-                                            .atZone(ZoneId.systemDefault())
-                                            .toLocalDate()
-                                    }
-                                    showBirthdatePicker = false
-                                }
-                            ) { Text(stringResource(R.string.onboarding_next)) }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showBirthdatePicker = false }) {
-                                Text(stringResource(android.R.string.cancel))
-                            }
-                        }
-                    ) {
-                        DatePicker(state = datePickerState)
-                    }
+                    // Overlay so tap opens date picker (readOnly TextField consumes clicks otherwise)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { showBirthdatePicker = true }
+                    )
                 }
             }
             STEP_GOAL_PACE -> {
@@ -650,6 +633,36 @@ fun ProfileSetupScreen(
                         else stringResource(R.string.onboarding_next)
                     )
                 }
+            }
+        }
+        }
+        if (showBirthdatePicker) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = selectedBirthdate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+                    ?: System.currentTimeMillis(),
+                yearRange = (LocalDate.now().year - 120)..LocalDate.now().year
+            )
+            DatePickerDialog(
+                onDismissRequest = { showBirthdatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                selectedBirthdate = Instant.ofEpochMilli(millis)
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                            }
+                            showBirthdatePicker = false
+                        }
+                    ) { Text(stringResource(R.string.onboarding_next)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBirthdatePicker = false }) {
+                        Text(stringResource(android.R.string.cancel))
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
             }
         }
     }

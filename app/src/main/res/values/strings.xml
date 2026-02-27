@@ -115,8 +115,6 @@
     <string name="onboarding_page1_desc">Snap a photo or describe your meal. NomNom gives you a detailed calorie and nutrition breakdown.</string>
     <string name="onboarding_page2_title">Stay on track</string>
     <string name="onboarding_page2_desc">Set goals, log weight, and see your progress over time. Compare before and after photos.</string>
-    <string name="onboarding_page3_title">Grow with friends</string>
-    <string name="onboarding_page3_desc">Join groups, share meals, and get support from others on the same journey.</string>
     <string name="onboarding_page4_title">You\'re all set</string>
     <string name="onboarding_page4_desc">Tap Get started to begin tracking and reach your goals.</string>
 

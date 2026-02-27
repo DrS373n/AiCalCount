@@ -48,7 +48,6 @@ fun OnboardingScreen(
     val pages = listOf(
         OnboardingPage(R.string.onboarding_page1_title, R.string.onboarding_page1_desc, "📸"),
         OnboardingPage(R.string.onboarding_page2_title, R.string.onboarding_page2_desc, "📈"),
-        OnboardingPage(R.string.onboarding_page3_title, R.string.onboarding_page3_desc, "👥"),
         OnboardingPage(R.string.onboarding_page4_title, R.string.onboarding_page4_desc, "✨")
     )
     val pagerState = rememberPagerState(pageCount = { pages.size })
